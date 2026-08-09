@@ -1,7 +1,11 @@
-﻿import { AlertCircle, Edit, Loader2, Plus, RefreshCw, Trash2, Users } from 'lucide-react'
+﻿import { AlertCircle, Edit, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router'
 
 import { isCustomersApiConfigured, type Customer, type CustomerDraft } from '@/apis/customers-api'
+import { CustomerDeleteDialog } from '@/components/customers/CustomerDeleteDialog'
+import { CustomerForm } from '@/components/customers/CustomerForm'
+import { CustomerSearch } from '@/components/customers/CustomerSearch'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,15 +17,12 @@ import {
 } from '@/components/ui/card'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -31,104 +32,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useCustomersStore } from '@/context/customers-store'
-
-
-interface CustomerFormProps {
-  initialValue?: Customer
-  isSaving: boolean
-  submitLabel: string
-  onSubmit: (customer: CustomerDraft) => Promise<void>
-}
-
-function CustomerForm({ initialValue, isSaving, submitLabel, onSubmit }: CustomerFormProps) {
-  const [formData, setFormData] = useState<CustomerDraft>(() => ({
-    name: initialValue?.name ?? '',
-    address: initialValue?.address ?? '',
-    postcode: initialValue?.postcode ?? '',
-    telephoneNumber: initialValue?.telephoneNumber ?? '',
-    notes: initialValue?.notes ?? '',
-  }))
-
-  function updateField(field: keyof CustomerDraft, value: string) {
-    setFormData((currentFormData) => ({
-      ...currentFormData,
-      [field]: value,
-    }))
-  }
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    await onSubmit({
-      name: formData.name.trim(),
-      address: formData.address.trim(),
-      postcode: formData.postcode.trim(),
-      telephoneNumber: formData.telephoneNumber.trim(),
-      notes: formData.notes.trim(),
-    })
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div className="grid gap-4 py-4">
-        <label className="grid gap-2 text-sm font-medium">
-          Name
-          <Input
-            required
-            value={formData.name}
-            onChange={(event) => updateField('name', event.target.value)}
-            placeholder="John Smith"
-          />
-        </label>
-        <label className="grid gap-2 text-sm font-medium">
-          Address
-          <Input
-            value={formData.address}
-            onChange={(event) => updateField('address', event.target.value)}
-            placeholder="10 High Street"
-          />
-        </label>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-medium">
-            Postcode
-            <Input
-              value={formData.postcode}
-              onChange={(event) => updateField('postcode', event.target.value)}
-              placeholder="CF44 7AA"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Telephone number
-            <Input
-              value={formData.telephoneNumber}
-              onChange={(event) => updateField('telephoneNumber', event.target.value)}
-              placeholder="07123456789"
-            />
-          </label>
-        </div>
-        <label className="grid gap-2 text-sm font-medium">
-          Notes
-          <textarea
-            className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring min-h-24 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-            value={formData.notes}
-            onChange={(event) => updateField('notes', event.target.value)}
-            placeholder="Regular customer"
-          />
-        </label>
-      </div>
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button type="button" variant="outline">Cancel</Button>
-        </DialogClose>
-        <Button type="submit" disabled={isSaving}>
-          {isSaving && <Loader2 className="size-4 animate-spin" />}
-          {submitLabel}
-        </Button>
-      </DialogFooter>
-    </form>
-  )
-}
+import { searchCustomers } from '@/lib/customer-search'
 
 export function CustomersPage() {
+  const navigate = useNavigate()
   const customers = useCustomersStore((state) => state.customers)
   const searchQuery = useCustomersStore((state) => state.searchQuery)
   const isLoading = useCustomersStore((state) => state.isLoading)
@@ -151,25 +58,10 @@ export function CustomersPage() {
     }
   }, [fetchCustomers])
 
-  const filteredCustomers = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-
-    if (!query) return customers
-
-    return customers.filter((customer) =>
-      [
-        customer.id,
-        customer.name,
-        customer.address,
-        customer.postcode,
-        customer.telephoneNumber,
-        customer.notes,
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    )
-  }, [customers, searchQuery])
+  const rankedCustomers = useMemo(
+    () => searchCustomers(customers, searchQuery),
+    [customers, searchQuery],
+  )
 
   async function handleCreateCustomer(customer: CustomerDraft) {
     await createCustomer(customer)
@@ -190,17 +82,25 @@ export function CustomersPage() {
     setDeleteOpen(false)
   }
 
+  function openCustomerProfile(customer: Customer) {
+    navigate(`/customers/${customer.id}`)
+  }
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">Customers</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage records stored in the Google Sheet Customers tab.
+            Manage Peppers customer records stored in the Google Sheet Customers tab.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => void fetchCustomers()} disabled={isLoading || !isCustomersApiConfigured}>
+          <Button
+            variant="outline"
+            onClick={() => void fetchCustomers()}
+            disabled={isLoading || !isCustomersApiConfigured}
+          >
             <RefreshCw className={isLoading ? 'size-4 animate-spin' : 'size-4'} />
             Refresh
           </Button>
@@ -215,7 +115,7 @@ export function CustomersPage() {
               <DialogHeader>
                 <DialogTitle>Create customer</DialogTitle>
                 <DialogDescription>
-                  Only name is required by the Apps Script API. The ID is generated automatically.
+                  Only name is required by the current Apps Script API. The ID is generated automatically.
                 </DialogDescription>
               </DialogHeader>
               <CustomerForm
@@ -260,7 +160,7 @@ export function CustomersPage() {
         <Card>
           <CardHeader>
             <CardDescription>Visible results</CardDescription>
-            <CardTitle className="text-2xl">{filteredCustomers.length}</CardTitle>
+            <CardTitle className="text-2xl">{rankedCustomers.length}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
@@ -276,20 +176,19 @@ export function CustomersPage() {
       </section>
 
       <Card>
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <CardTitle>Customer records</CardTitle>
             <CardDescription>
-              Columns match the sheet: ID, Name, Address, postcode, Telephone number, Notes.
+              Search is weighted for restaurant service: postcode and address matches are ranked above weak name matches.
             </CardDescription>
           </div>
-          <div className="relative w-full sm:w-80">
-            <Users className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="pl-9"
+          <div className="w-full lg:w-[420px]">
+            <CustomerSearch
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search customers"
+              onChange={setSearchQuery}
+              resultCount={rankedCustomers.length}
+              totalCount={customers.length}
             />
           </div>
         </CardHeader>
@@ -318,7 +217,7 @@ export function CustomersPage() {
                 </TableRow>
               )}
 
-              {!isLoading && filteredCustomers.length === 0 && (
+              {!isLoading && rankedCustomers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="h-28 text-center text-muted-foreground">
                     No customers found.
@@ -326,10 +225,31 @@ export function CustomersPage() {
                 </TableRow>
               )}
 
-              {!isLoading && filteredCustomers.map((customer) => (
-                <TableRow key={customer.id}>
+              {!isLoading && rankedCustomers.map(({ customer, matchedFields }) => (
+                <TableRow
+                  key={customer.id}
+                  className="cursor-pointer"
+                  tabIndex={0}
+                  onClick={() => openCustomerProfile(customer)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') openCustomerProfile(customer)
+                  }}
+                >
                   <TableCell className="font-medium">{customer.id}</TableCell>
-                  <TableCell className="font-medium">{customer.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link
+                      className="underline-offset-4 hover:underline"
+                      to={`/customers/${customer.id}`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {customer.name || 'Unnamed customer'}
+                    </Link>
+                    {matchedFields.length > 0 && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Matched {matchedFields.join(', ')}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>{customer.address || '-'}</TableCell>
                   <TableCell>{customer.postcode || '-'}</TableCell>
                   <TableCell>{customer.telephoneNumber || '-'}</TableCell>
@@ -339,7 +259,8 @@ export function CustomersPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
+                        onClick={(event) => {
+                          event.stopPropagation()
                           setSelectedCustomer(customer)
                           setEditOpen(true)
                         }}
@@ -350,7 +271,8 @@ export function CustomersPage() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => {
+                        onClick={(event) => {
+                          event.stopPropagation()
                           setSelectedCustomer(customer)
                           setDeleteOpen(true)
                         }}
@@ -387,30 +309,13 @@ export function CustomersPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete customer</DialogTitle>
-            <DialogDescription>
-              This deletes the matching Google Sheet row and does not renumber other IDs.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="rounded-md border bg-muted/40 p-4 text-sm">
-            <p className="font-medium">{selectedCustomer?.name}</p>
-            <p className="text-muted-foreground">ID {selectedCustomer?.id}</p>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button variant="destructive" onClick={() => void handleDeleteCustomer()} disabled={isSaving}>
-              {isSaving && <Loader2 className="size-4 animate-spin" />}
-              Delete customer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CustomerDeleteDialog
+        customer={selectedCustomer}
+        open={deleteOpen}
+        isSaving={isSaving}
+        onOpenChange={setDeleteOpen}
+        onDelete={handleDeleteCustomer}
+      />
     </div>
   )
 }
-
