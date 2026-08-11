@@ -1,0 +1,4 @@
+.clasprc.json
+.clasprc.*.json
+credentials.json
+client_secret*.json
