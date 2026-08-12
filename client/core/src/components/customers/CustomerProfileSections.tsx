@@ -9,6 +9,7 @@ interface CustomerOverviewSectionProps {
 
 const details: Array<{ label: string; field: keyof Customer }> = [
   { label: 'Customer ID', field: 'id' },
+  { label: 'Code', field: 'code' },
   { label: 'Name', field: 'name' },
   { label: 'Address', field: 'address' },
   { label: 'Postcode', field: 'postcode' },

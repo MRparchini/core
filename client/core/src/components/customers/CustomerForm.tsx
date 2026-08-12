@@ -20,6 +20,7 @@ export function CustomerForm({
   onSubmit,
 }: CustomerFormProps) {
   const [formData, setFormData] = useState<CustomerDraft>(() => ({
+    code: initialValue?.code ?? '',
     name: initialValue?.name ?? '',
     address: initialValue?.address ?? '',
     postcode: initialValue?.postcode ?? '',
@@ -37,6 +38,7 @@ export function CustomerForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     await onSubmit({
+      code: formData.code.trim(),
       name: formData.name.trim(),
       address: formData.address.trim(),
       postcode: formData.postcode.trim(),
@@ -48,6 +50,14 @@ export function CustomerForm({
   return (
     <form onSubmit={handleSubmit}>
       <div className="grid gap-4 py-4">
+        <label className="grid gap-2 text-sm font-medium">
+          Code
+          <Input
+            value={formData.code}
+            onChange={(event) => updateField('code', event.target.value)}
+            placeholder="CUST-001"
+          />
+        </label>
         <label className="grid gap-2 text-sm font-medium">
           Name
           <Input

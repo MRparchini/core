@@ -68,6 +68,7 @@ export function rankCustomerMatch(customer: Customer, rawQuery: string) {
   let score = -1
 
   const id = normalizeText(customer.id)
+  const code = normalizeText(customer.code)
   const name = normalizeText(customer.name)
   const address = normalizeText(customer.address)
   const compactPostcode = normalizeCompact(customer.postcode)
@@ -129,6 +130,16 @@ export function rankCustomerMatch(customer: Customer, rawQuery: string) {
 
   if (id && id === query) {
     score = addScore(matchedFields, 'id', score, 820)
+  }
+
+  // ----------------------------------------------------------
+  // CUSTOMER CODE
+  // ----------------------------------------------------------
+
+  if (code && code === query) {
+    score = addScore(matchedFields, 'code', score, 810)
+  } else if (code && code.includes(query)) {
+    score = addScore(matchedFields, 'code', score, 700)
   }
 
   // ----------------------------------------------------------

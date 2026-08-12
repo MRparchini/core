@@ -5,11 +5,12 @@ var CONFIG = {
   FIRST_DATA_ROW: 2,
   COLUMNS: {
     id: 1,
-    name: 2,
-    address: 3,
-    postcode: 4,
-    telephoneNumber: 5,
-    notes: 6
+    code: 2,
+    name: 3,
+    address: 4,
+    postcode: 5,
+    telephoneNumber: 6,
+    notes: 7
   },
-  TOTAL_COLUMNS: 6
+  TOTAL_COLUMNS: 7
 };

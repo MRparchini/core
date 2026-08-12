@@ -15,7 +15,7 @@ export function CustomerSearch({
   onChange,
   resultCount,
   totalCount,
-  placeholder = 'Search by postcode, address, phone, name, ID, or notes',
+  placeholder = 'Search by postcode, address, phone, name, code, ID, or notes',
 }: CustomerSearchProps) {
   return (
     <div className="grid gap-2">

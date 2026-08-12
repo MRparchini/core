@@ -50,6 +50,7 @@ function createCustomer(customer) {
   var newRowNumber = sheet.getLastRow() + 1;
   var row = [
     newId,
+    cleanValue(customer.code),
     cleanValue(customer.name),
     cleanValue(customer.address),
     cleanValue(customer.postcode),
@@ -88,6 +89,10 @@ function updateCustomer(id, customer) {
     currentCustomer.name = cleanValue(customer.name);
   }
 
+  if (hasOwn(customer, 'code')) {
+    currentCustomer.code = cleanValue(customer.code);
+  }
+
   if (hasOwn(customer, 'address')) {
     currentCustomer.address = cleanValue(customer.address);
   }
@@ -106,6 +111,7 @@ function updateCustomer(id, customer) {
 
   var updatedRow = [
     currentCustomer.id,
+    currentCustomer.code,
     currentCustomer.name,
     currentCustomer.address,
     currentCustomer.postcode,

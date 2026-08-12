@@ -197,6 +197,7 @@ export function CustomersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
+                <TableHead>Code</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Address</TableHead>
                 <TableHead>Postcode</TableHead>
@@ -208,7 +209,7 @@ export function CustomersPage() {
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-28 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-28 text-center text-muted-foreground">
                     <span className="inline-flex items-center gap-2">
                       <Loader2 className="size-4 animate-spin" />
                       Loading customers
@@ -219,7 +220,7 @@ export function CustomersPage() {
 
               {!isLoading && rankedCustomers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-28 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-28 text-center text-muted-foreground">
                     No customers found.
                   </TableCell>
                 </TableRow>
@@ -236,6 +237,7 @@ export function CustomersPage() {
                   }}
                 >
                   <TableCell className="font-medium">{customer.id}</TableCell>
+                  <TableCell>{customer.code || '-'}</TableCell>
                   <TableCell className="font-medium">
                     <Link
                       className="underline-offset-4 hover:underline"
