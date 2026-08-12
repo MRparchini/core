@@ -1,10 +1,25 @@
-function apiGetAllCustomers() {
-  var customers = getAllCustomers();
+function apiGetAllCustomers(params) {
+  var paginationOptions = normalizeCustomerPagination(params || {});
+  var result = getCustomersPage(paginationOptions);
 
   return jsonResponse({
     success: true,
-    count: customers.length,
-    data: customers
+    count: result.customers.length,
+    total: result.total,
+    page: result.page,
+    pageSize: result.pageSize,
+    totalPages: result.totalPages,
+    hasPreviousPage: result.hasPreviousPage,
+    hasNextPage: result.hasNextPage,
+    pagination: {
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+      totalPages: result.totalPages,
+      hasPreviousPage: result.hasPreviousPage,
+      hasNextPage: result.hasNextPage
+    },
+    data: result.customers
   });
 }
 

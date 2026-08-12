@@ -29,3 +29,28 @@ function cleanValue(value) {
 function hasOwn(object, property) {
   return Object.prototype.hasOwnProperty.call(object, property);
 }
+function normalizeCustomerPagination(params) {
+  var page = normalizePositiveInteger(params.page, 1);
+  var pageSize = normalizePositiveInteger(params.pageSize, 50);
+  var query = cleanValue(params.query || params.search || '');
+
+  if (pageSize > 200) {
+    pageSize = 200;
+  }
+
+  return {
+    page: page,
+    pageSize: pageSize,
+    query: query
+  };
+}
+
+function normalizePositiveInteger(value, fallback) {
+  var number = Number(value);
+
+  if (!Number.isFinite(number) || number < 1) {
+    return fallback;
+  }
+
+  return Math.floor(number);
+}

@@ -8,7 +8,7 @@ function doGet(e) {
 
     switch (action) {
       case 'getAll':
-        return apiGetAllCustomers();
+        return apiGetAllCustomers(e.parameter);
 
       case 'getById':
         return apiGetCustomerById(e.parameter.id);

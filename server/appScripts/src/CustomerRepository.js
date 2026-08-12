@@ -9,24 +9,134 @@ function getCustomersSheet() {
   return sheet;
 }
 
-function getAllCustomers() {
+function getCustomersPage(options) {
   var sheet = getCustomersSheet();
   var lastRow = sheet.getLastRow();
+  var page = options.page;
+  var pageSize = options.pageSize;
+  var query = options.query;
 
   if (lastRow < CONFIG.FIRST_DATA_ROW) {
-    return [];
+    return buildCustomersPageResult([], 0, page, pageSize);
   }
 
+  if (query) {
+    return searchCustomersPage(sheet, lastRow, page, pageSize, query);
+  }
+
+  var total = lastRow - CONFIG.FIRST_DATA_ROW + 1;
+  var startOffset = (page - 1) * pageSize;
+
+  if (startOffset >= total) {
+    return buildCustomersPageResult([], total, page, pageSize);
+  }
+
+  var startRow = CONFIG.FIRST_DATA_ROW + startOffset;
+  var numberOfRows = Math.min(pageSize, total - startOffset);
+  var rows = sheet
+    .getRange(startRow, 1, numberOfRows, CONFIG.TOTAL_COLUMNS)
+    .getDisplayValues();
+
+  var customers = rows
+    .filter(function(row) {
+      return String(row[0]).trim() !== '';
+    })
+    .map(rowToCustomer);
+
+  return buildCustomersPageResult(customers, total, page, pageSize);
+}
+
+function searchCustomersPage(sheet, lastRow, page, pageSize, query) {
   var numberOfRows = lastRow - CONFIG.FIRST_DATA_ROW + 1;
   var rows = sheet
     .getRange(CONFIG.FIRST_DATA_ROW, 1, numberOfRows, CONFIG.TOTAL_COLUMNS)
     .getDisplayValues();
 
-  return rows
+  var matchedCustomers = rows
     .filter(function(row) {
-      return String(row[0]).trim() !== '';
+      return String(row[0]).trim() !== '' && customerRowMatchesQuery(row, query);
     })
     .map(rowToCustomer);
+
+  var startOffset = (page - 1) * pageSize;
+  var customers = matchedCustomers.slice(startOffset, startOffset + pageSize);
+
+  return buildCustomersPageResult(customers, matchedCustomers.length, page, pageSize);
+}
+
+function customerRowMatchesQuery(row, query) {
+  var normalizedQuery = normalizeCustomerSearchText(query);
+  var compactQuery = normalizeCustomerSearchCompact(query);
+  var telephoneQuery = normalizeCustomerTelephone(query);
+  var tokens = normalizedQuery.split(' ').filter(Boolean);
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  var customer = rowToCustomer(row);
+  var searchableText = [
+    customer.id,
+    customer.code,
+    customer.name,
+    customer.address,
+    customer.postcode,
+    customer.telephoneNumber,
+    customer.notes
+  ].join(' ');
+
+  if (normalizeCustomerSearchText(searchableText).indexOf(normalizedQuery) !== -1) {
+    return true;
+  }
+
+  if (
+    compactQuery.length >= 3 &&
+    normalizeCustomerSearchCompact(customer.postcode).indexOf(compactQuery) !== -1
+  ) {
+    return true;
+  }
+
+  if (
+    telephoneQuery.length >= 4 &&
+    normalizeCustomerTelephone(customer.telephoneNumber).indexOf(telephoneQuery) !== -1
+  ) {
+    return true;
+  }
+
+  return tokens.length > 0 && tokens.every(function(token) {
+    return normalizeCustomerSearchText(searchableText).indexOf(token) !== -1;
+  });
+}
+
+function buildCustomersPageResult(customers, total, page, pageSize) {
+  var totalPages = total === 0 ? 1 : Math.ceil(total / pageSize);
+
+  return {
+    customers: customers,
+    total: total,
+    page: page,
+    pageSize: pageSize,
+    totalPages: totalPages,
+    hasPreviousPage: page > 1,
+    hasNextPage: page < totalPages
+  };
+}
+
+function normalizeCustomerSearchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeCustomerSearchCompact(value) {
+  return normalizeCustomerSearchText(value).replace(/\s+/g, '');
+}
+
+function normalizeCustomerTelephone(value) {
+  return String(value || '').replace(/\D/g, '');
 }
 
 function getCustomerById(id) {

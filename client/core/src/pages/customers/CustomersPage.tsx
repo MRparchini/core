@@ -1,5 +1,5 @@
-﻿import { AlertCircle, Edit, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { AlertCircle, Edit, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 
 import { isCustomersApiConfigured, type Customer, type CustomerDraft } from '@/apis/customers-api'
@@ -32,17 +32,24 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useCustomersStore } from '@/context/customers-store'
-import { searchCustomers } from '@/lib/customer-search'
 
 export function CustomersPage() {
   const navigate = useNavigate()
   const customers = useCustomersStore((state) => state.customers)
   const searchQuery = useCustomersStore((state) => state.searchQuery)
+  const customerPage = useCustomersStore((state) => state.customerPage)
+  const customerPageSize = useCustomersStore((state) => state.customerPageSize)
+  const totalCustomers = useCustomersStore((state) => state.totalCustomers)
+  const totalPages = useCustomersStore((state) => state.totalPages)
+  const hasPreviousPage = useCustomersStore((state) => state.hasPreviousPage)
+  const hasNextPage = useCustomersStore((state) => state.hasNextPage)
   const isLoading = useCustomersStore((state) => state.isLoading)
   const isSaving = useCustomersStore((state) => state.isSaving)
   const error = useCustomersStore((state) => state.error)
   const selectedCustomer = useCustomersStore((state) => state.selectedCustomer)
   const setSearchQuery = useCustomersStore((state) => state.setSearchQuery)
+  const setCustomerPage = useCustomersStore((state) => state.setCustomerPage)
+  const setCustomerPageSize = useCustomersStore((state) => state.setCustomerPageSize)
   const setSelectedCustomer = useCustomersStore((state) => state.setSelectedCustomer)
   const fetchCustomers = useCustomersStore((state) => state.fetchCustomers)
   const createCustomer = useCustomersStore((state) => state.createCustomer)
@@ -53,15 +60,18 @@ export function CustomersPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   useEffect(() => {
-    if (isCustomersApiConfigured) {
-      void fetchCustomers()
-    }
-  }, [fetchCustomers])
+    if (!isCustomersApiConfigured) return
 
-  const rankedCustomers = useMemo(
-    () => searchCustomers(customers, searchQuery),
-    [customers, searchQuery],
-  )
+    const timeoutId = window.setTimeout(() => {
+      void fetchCustomers({
+        page: customerPage,
+        pageSize: customerPageSize,
+        query: searchQuery,
+      })
+    }, 250)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [customerPage, customerPageSize, fetchCustomers, searchQuery])
 
   async function handleCreateCustomer(customer: CustomerDraft) {
     await createCustomer(customer)
@@ -98,7 +108,7 @@ export function CustomersPage() {
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
-            onClick={() => void fetchCustomers()}
+            onClick={() => void fetchCustomers({ page: customerPage, pageSize: customerPageSize, query: searchQuery })}
             disabled={isLoading || !isCustomersApiConfigured}
           >
             <RefreshCw className={isLoading ? 'size-4 animate-spin' : 'size-4'} />
@@ -154,13 +164,13 @@ export function CustomersPage() {
         <Card>
           <CardHeader>
             <CardDescription>Total customers</CardDescription>
-            <CardTitle className="text-2xl">{customers.length}</CardTitle>
+            <CardTitle className="text-2xl">{totalCustomers}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Visible results</CardDescription>
-            <CardTitle className="text-2xl">{rankedCustomers.length}</CardTitle>
+            <CardDescription>Loaded page</CardDescription>
+            <CardTitle className="text-2xl">{customers.length}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
@@ -180,15 +190,15 @@ export function CustomersPage() {
           <div>
             <CardTitle>Customer records</CardTitle>
             <CardDescription>
-              Search is weighted for restaurant service: postcode and address matches are ranked above weak name matches.
+              Search runs on the Apps Script API, so large sheets are filtered before the current page is returned.
             </CardDescription>
           </div>
           <div className="w-full lg:w-[420px]">
             <CustomerSearch
               value={searchQuery}
               onChange={setSearchQuery}
-              resultCount={rankedCustomers.length}
-              totalCount={customers.length}
+              resultCount={customers.length}
+              totalCount={totalCustomers}
             />
           </div>
         </CardHeader>
@@ -218,7 +228,7 @@ export function CustomersPage() {
                 </TableRow>
               )}
 
-              {!isLoading && rankedCustomers.length === 0 && (
+              {!isLoading && customers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="h-28 text-center text-muted-foreground">
                     No customers found.
@@ -226,7 +236,7 @@ export function CustomersPage() {
                 </TableRow>
               )}
 
-              {!isLoading && rankedCustomers.map(({ customer, matchedFields }) => (
+              {!isLoading && customers.map((customer) => (
                 <TableRow
                   key={customer.id}
                   className="cursor-pointer"
@@ -246,11 +256,6 @@ export function CustomersPage() {
                     >
                       {customer.name || 'Unnamed customer'}
                     </Link>
-                    {matchedFields.length > 0 && (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        Matched {matchedFields.join(', ')}
-                      </div>
-                    )}
                   </TableCell>
                   <TableCell>{customer.address || '-'}</TableCell>
                   <TableCell>{customer.postcode || '-'}</TableCell>
@@ -289,6 +294,43 @@ export function CustomersPage() {
             </TableBody>
           </Table>
         </CardContent>
+        <div className="flex flex-col gap-3 border-t px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-muted-foreground">
+            Page {customerPage} of {totalPages} - {totalCustomers} customers
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              Rows
+              <select
+                className="border-input bg-background h-9 rounded-md border px-2 text-sm"
+                value={customerPageSize}
+                onChange={(event) => setCustomerPageSize(Number(event.target.value))}
+                disabled={isLoading}
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+              </select>
+            </label>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCustomerPage(customerPage - 1)}
+              disabled={isLoading || !hasPreviousPage}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCustomerPage(customerPage + 1)}
+              disabled={isLoading || !hasNextPage}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
