@@ -46,7 +46,7 @@ function getCustomerById(id) {
 
 function createCustomer(customer) {
   var sheet = getCustomersSheet();
-  var newId = getNextCustomerId(sheet);
+  var newId = generateCustomerId(sheet);
   var newRowNumber = sheet.getLastRow() + 1;
   var row = [
     newId,
@@ -57,6 +57,10 @@ function createCustomer(customer) {
     cleanValue(customer.telephoneNumber),
     cleanValue(customer.notes)
   ];
+
+  sheet
+    .getRange(newRowNumber, CONFIG.COLUMNS.id)
+    .setNumberFormat('@');
 
   sheet
     .getRange(newRowNumber, CONFIG.COLUMNS.telephoneNumber)
@@ -176,30 +180,12 @@ function findCustomerRowById(sheet, id) {
   return CONFIG.FIRST_DATA_ROW + index;
 }
 
-function getNextCustomerId(sheet) {
-  var lastRow = sheet.getLastRow();
+function generateCustomerId(sheet) {
+  var id = Utilities.getUuid();
 
-  if (lastRow < CONFIG.FIRST_DATA_ROW) {
-    return 1;
+  while (findCustomerRowById(sheet, id) !== -1) {
+    id = Utilities.getUuid();
   }
 
-  var numberOfRows = lastRow - CONFIG.FIRST_DATA_ROW + 1;
-  var ids = sheet
-    .getRange(CONFIG.FIRST_DATA_ROW, CONFIG.COLUMNS.id, numberOfRows, 1)
-    .getDisplayValues()
-    .flat();
-
-  var numericIds = ids
-    .map(function(id) {
-      return Number(id);
-    })
-    .filter(function(id) {
-      return Number.isFinite(id);
-    });
-
-  if (numericIds.length === 0) {
-    return 1;
-  }
-
-  return Math.max.apply(null, numericIds) + 1;
+  return id;
 }
