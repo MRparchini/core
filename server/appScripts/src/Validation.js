@@ -8,14 +8,25 @@ function validateCustomerForCreate(customer) {
   }
 }
 
-function normalizeId(id) {
-  var customerId = String(id === undefined ? '' : id).trim();
-
-  if (!customerId) {
-    throw new Error('Customer ID is required.');
+function validateProductForCreate(product) {
+  if (!product || typeof product !== 'object') {
+    throw new Error('product object is required.');
   }
 
-  return customerId;
+  if (!product.name || String(product.name).trim() === '') {
+    throw new Error('Product name is required.');
+  }
+}
+
+function normalizeId(id, label) {
+  var idLabel = label || 'ID';
+  var normalizedId = String(id === undefined ? '' : id).trim();
+
+  if (!normalizedId) {
+    throw new Error(idLabel + ' is required.');
+  }
+
+  return normalizedId;
 }
 
 function cleanValue(value) {
@@ -29,7 +40,24 @@ function cleanValue(value) {
 function hasOwn(object, property) {
   return Object.prototype.hasOwnProperty.call(object, property);
 }
+
 function normalizeCustomerPagination(params) {
+  var page = normalizePositiveInteger(params.page, 1);
+  var pageSize = normalizePositiveInteger(params.pageSize, 50);
+  var query = cleanValue(params.query || params.search || '');
+
+  if (pageSize > 200) {
+    pageSize = 200;
+  }
+
+  return {
+    page: page,
+    pageSize: pageSize,
+    query: query
+  };
+}
+
+function normalizeProductPagination(params) {
   var page = normalizePositiveInteger(params.page, 1);
   var pageSize = normalizePositiveInteger(params.pageSize, 50);
   var query = cleanValue(params.query || params.search || '');

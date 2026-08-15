@@ -1,10 +1,10 @@
-function apiGetAllCustomers(params) {
-  var paginationOptions = normalizeCustomerPagination(params || {});
-  var result = getCustomersPage(paginationOptions);
+function apiGetAllProducts(params) {
+  var paginationOptions = normalizeProductPagination(params || {});
+  var result = getProductsPage(paginationOptions);
 
   return jsonResponse({
     success: true,
-    count: result.customers.length,
+    count: result.products.length,
     total: result.total,
     page: result.page,
     pageSize: result.pageSize,
@@ -19,57 +19,57 @@ function apiGetAllCustomers(params) {
       hasPreviousPage: result.hasPreviousPage,
       hasNextPage: result.hasNextPage
     },
-    data: result.customers
+    data: result.products
   });
 }
 
-function apiGetCustomerById(id) {
-  var customerId = normalizeId(id, 'Customer ID');
-  var customer = getCustomerById(customerId);
+function apiGetProductById(id) {
+  var productId = normalizeId(id, 'Product ID');
+  var product = getProductById(productId);
 
-  if (!customer) {
+  if (!product) {
     return jsonResponse({
       success: false,
       code: 404,
-      message: 'Customer not found.',
+      message: 'Product not found.',
       data: null
     });
   }
 
   return jsonResponse({
     success: true,
-    data: customer
+    data: product
   });
 }
 
-function apiCreateCustomer(customer) {
-  validateCustomerForCreate(customer);
+function apiCreateProduct(product) {
+  validateProductForCreate(product);
 
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
 
   try {
-    var createdCustomer = createCustomer(customer);
+    var createdProduct = createProduct(product);
 
     return jsonResponse({
       success: true,
       code: 201,
-      message: 'Customer created successfully.',
-      data: createdCustomer
+      message: 'Product created successfully.',
+      data: createdProduct
     });
   } finally {
     lock.releaseLock();
   }
 }
 
-function apiUpdateCustomer(id, customer) {
-  var customerId = normalizeId(id, 'Customer ID');
+function apiUpdateProduct(id, product) {
+  var productId = normalizeId(id, 'Product ID');
 
-  if (!customer || typeof customer !== 'object') {
+  if (!product || typeof product !== 'object') {
     return jsonResponse({
       success: false,
       code: 400,
-      message: 'customer object is required.',
+      message: 'product object is required.',
       data: null
     });
   }
@@ -78,49 +78,49 @@ function apiUpdateCustomer(id, customer) {
   lock.waitLock(10000);
 
   try {
-    var updatedCustomer = updateCustomer(customerId, customer);
+    var updatedProduct = updateProduct(productId, product);
 
-    if (!updatedCustomer) {
+    if (!updatedProduct) {
       return jsonResponse({
         success: false,
         code: 404,
-        message: 'Customer not found.',
+        message: 'Product not found.',
         data: null
       });
     }
 
     return jsonResponse({
       success: true,
-      message: 'Customer updated successfully.',
-      data: updatedCustomer
+      message: 'Product updated successfully.',
+      data: updatedProduct
     });
   } finally {
     lock.releaseLock();
   }
 }
 
-function apiDeleteCustomer(id) {
-  var customerId = normalizeId(id, 'Customer ID');
+function apiDeleteProduct(id) {
+  var productId = normalizeId(id, 'Product ID');
 
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
 
   try {
-    var deletedCustomer = deleteCustomer(customerId);
+    var deletedProduct = deleteProduct(productId);
 
-    if (!deletedCustomer) {
+    if (!deletedProduct) {
       return jsonResponse({
         success: false,
         code: 404,
-        message: 'Customer not found.',
+        message: 'Product not found.',
         data: null
       });
     }
 
     return jsonResponse({
       success: true,
-      message: 'Customer deleted successfully.',
-      data: deletedCustomer
+      message: 'Product deleted successfully.',
+      data: deletedProduct
     });
   } finally {
     lock.releaseLock();

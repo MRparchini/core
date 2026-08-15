@@ -54,7 +54,7 @@ const appsScriptApiKey = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_API_KEY as stri
 const customersApiTimeoutMs = Number(import.meta.env.VITE_CUSTOMERS_API_TIMEOUT_MS || 30000)
 const devProxyUrl = '/google-app-script'
 const apiBaseUrl = import.meta.env.DEV ? devProxyUrl : appsScriptUrl
-
+const customersServiceName = 'customers'
 
 const customersClient = axios.create({
   baseURL: apiBaseUrl || undefined,
@@ -73,6 +73,14 @@ function apiKeyParams() {
 
 function apiKeyBody() {
   return appsScriptApiKey ? { apiKey: appsScriptApiKey, key: appsScriptApiKey } : {}
+}
+
+function serviceParams() {
+  return { service: customersServiceName, serviceName: customersServiceName }
+}
+
+function serviceBody() {
+  return { service: customersServiceName, serviceName: customersServiceName }
 }
 
 function unwrapResponse<T>(response: ApiResponse<T>) {
@@ -100,6 +108,7 @@ export async function getCustomers({
   const response = await customersClient.get<ApiResponse<Customer[]>>('', {
     signal,
     params: {
+      ...serviceParams(),
       action: 'getAll',
       page,
       pageSize,
@@ -187,6 +196,7 @@ export async function getCustomerById(id: string) {
 
   const response = await customersClient.get<ApiResponse<Customer>>('', {
     params: {
+      ...serviceParams(),
       action: 'getById',
       id,
       ...apiKeyParams(),
@@ -202,12 +212,13 @@ export async function createCustomer(customer: CustomerDraft) {
   const response = await customersClient.post<ApiResponse<Customer>>(
     '',
     JSON.stringify({
+      ...serviceBody(),
       action: 'create',
       customer,
       ...apiKeyBody(),
     }),
     {
-      params: apiKeyParams(),
+      params: { ...serviceParams(), ...apiKeyParams() },
       headers: {
         'Content-Type': 'text/plain;charset=utf-8',
       },
@@ -223,13 +234,14 @@ export async function updateCustomer(id: string, customer: CustomerUpdate) {
   const response = await customersClient.post<ApiResponse<Customer>>(
     '',
     JSON.stringify({
+      ...serviceBody(),
       action: 'update',
       id,
       customer,
       ...apiKeyBody(),
     }),
     {
-      params: apiKeyParams(),
+      params: { ...serviceParams(), ...apiKeyParams() },
       headers: {
         'Content-Type': 'text/plain;charset=utf-8',
       },
@@ -245,12 +257,13 @@ export async function deleteCustomer(id: string) {
   const response = await customersClient.post<ApiResponse<Customer>>(
     '',
     JSON.stringify({
+      ...serviceBody(),
       action: 'delete',
       id,
       ...apiKeyBody(),
     }),
     {
-      params: apiKeyParams(),
+      params: { ...serviceParams(), ...apiKeyParams() },
       headers: {
         'Content-Type': 'text/plain;charset=utf-8',
       },

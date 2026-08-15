@@ -11,9 +11,9 @@ function parseRequestBody(e) {
 }
 
 function assertApiKey(e, body) {
-  var expectedApiKey = PropertiesService
-    .getScriptProperties()
-    .getProperty('CUSTOMERS_API_KEY');
+  var scriptProperties = PropertiesService.getScriptProperties();
+  var expectedApiKey = scriptProperties.getProperty('CORE_API_KEY') ||
+    scriptProperties.getProperty('CUSTOMERS_API_KEY');
 
   if (!expectedApiKey) {
     return;

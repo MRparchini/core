@@ -1,6 +1,6 @@
 function getCustomersSheet() {
   var spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  var sheet = spreadsheet.getSheetByName(CONFIG.SHEET_NAME);
+  var sheet = spreadsheet.getSheetByName(CUSTOMER_CONFIG.SHEET_NAME);
 
   if (!sheet) {
     throw new Error('Customers sheet was not found.');
@@ -21,9 +21,9 @@ function getCustomerRowsForSearch(sheet, lastRow) {
     return cachedRows;
   }
 
-  var numberOfRows = lastRow - CONFIG.FIRST_DATA_ROW + 1;
+  var numberOfRows = lastRow - CUSTOMER_CONFIG.FIRST_DATA_ROW + 1;
   var rows = sheet
-    .getRange(CONFIG.FIRST_DATA_ROW, 1, numberOfRows, CONFIG.TOTAL_COLUMNS)
+    .getRange(CUSTOMER_CONFIG.FIRST_DATA_ROW, 1, numberOfRows, CUSTOMER_CONFIG.TOTAL_COLUMNS)
     .getDisplayValues();
 
   cacheCustomerRows(rows, lastRow);
@@ -42,7 +42,7 @@ function getCachedCustomerRows(lastRow) {
 
     var meta = JSON.parse(metaValue);
 
-    if (meta.lastRow !== lastRow || meta.columns !== CONFIG.TOTAL_COLUMNS || meta.chunks < 1) {
+    if (meta.lastRow !== lastRow || meta.columns !== CUSTOMER_CONFIG.TOTAL_COLUMNS || meta.chunks < 1) {
       return null;
     }
 
@@ -85,7 +85,7 @@ function cacheCustomerRows(rows, lastRow) {
       CUSTOMER_ROWS_CACHE_META_KEY,
       JSON.stringify({
         lastRow: lastRow,
-        columns: CONFIG.TOTAL_COLUMNS,
+        columns: CUSTOMER_CONFIG.TOTAL_COLUMNS,
         chunks: chunks
       }),
       CUSTOMER_ROWS_CACHE_TTL_SECONDS
@@ -122,7 +122,7 @@ function getCustomersPage(options) {
   var pageSize = options.pageSize;
   var query = options.query;
 
-  if (lastRow < CONFIG.FIRST_DATA_ROW) {
+  if (lastRow < CUSTOMER_CONFIG.FIRST_DATA_ROW) {
     return buildCustomersPageResult([], 0, page, pageSize);
   }
 
@@ -130,17 +130,17 @@ function getCustomersPage(options) {
     return searchCustomersPage(sheet, lastRow, page, pageSize, query);
   }
 
-  var total = lastRow - CONFIG.FIRST_DATA_ROW + 1;
+  var total = lastRow - CUSTOMER_CONFIG.FIRST_DATA_ROW + 1;
   var startOffset = (page - 1) * pageSize;
 
   if (startOffset >= total) {
     return buildCustomersPageResult([], total, page, pageSize);
   }
 
-  var startRow = CONFIG.FIRST_DATA_ROW + startOffset;
+  var startRow = CUSTOMER_CONFIG.FIRST_DATA_ROW + startOffset;
   var numberOfRows = Math.min(pageSize, total - startOffset);
   var rows = sheet
-    .getRange(startRow, 1, numberOfRows, CONFIG.TOTAL_COLUMNS)
+    .getRange(startRow, 1, numberOfRows, CUSTOMER_CONFIG.TOTAL_COLUMNS)
     .getDisplayValues();
 
   var customers = rows
@@ -251,7 +251,7 @@ function getCustomerById(id) {
   }
 
   var row = sheet
-    .getRange(rowNumber, 1, 1, CONFIG.TOTAL_COLUMNS)
+    .getRange(rowNumber, 1, 1, CUSTOMER_CONFIG.TOTAL_COLUMNS)
     .getDisplayValues()[0];
 
   return rowToCustomer(row);
@@ -272,15 +272,15 @@ function createCustomer(customer) {
   ];
 
   sheet
-    .getRange(newRowNumber, CONFIG.COLUMNS.id)
+    .getRange(newRowNumber, CUSTOMER_CONFIG.COLUMNS.id)
     .setNumberFormat('@');
 
   sheet
-    .getRange(newRowNumber, CONFIG.COLUMNS.telephoneNumber)
+    .getRange(newRowNumber, CUSTOMER_CONFIG.COLUMNS.telephoneNumber)
     .setNumberFormat('@');
 
   sheet
-    .getRange(newRowNumber, 1, 1, CONFIG.TOTAL_COLUMNS)
+    .getRange(newRowNumber, 1, 1, CUSTOMER_CONFIG.TOTAL_COLUMNS)
     .setValues([row]);
 
   SpreadsheetApp.flush();
@@ -298,7 +298,7 @@ function updateCustomer(id, customer) {
   }
 
   var currentRow = sheet
-    .getRange(rowNumber, 1, 1, CONFIG.TOTAL_COLUMNS)
+    .getRange(rowNumber, 1, 1, CUSTOMER_CONFIG.TOTAL_COLUMNS)
     .getDisplayValues()[0];
 
   var currentCustomer = rowToCustomer(currentRow);
@@ -338,11 +338,11 @@ function updateCustomer(id, customer) {
   ];
 
   sheet
-    .getRange(rowNumber, CONFIG.COLUMNS.telephoneNumber)
+    .getRange(rowNumber, CUSTOMER_CONFIG.COLUMNS.telephoneNumber)
     .setNumberFormat('@');
 
   sheet
-    .getRange(rowNumber, 1, 1, CONFIG.TOTAL_COLUMNS)
+    .getRange(rowNumber, 1, 1, CUSTOMER_CONFIG.TOTAL_COLUMNS)
     .setValues([updatedRow]);
 
   SpreadsheetApp.flush();
@@ -360,7 +360,7 @@ function deleteCustomer(id) {
   }
 
   var deletedRow = sheet
-    .getRange(rowNumber, 1, 1, CONFIG.TOTAL_COLUMNS)
+    .getRange(rowNumber, 1, 1, CUSTOMER_CONFIG.TOTAL_COLUMNS)
     .getDisplayValues()[0];
 
   var deletedCustomer = rowToCustomer(deletedRow);
@@ -375,13 +375,13 @@ function deleteCustomer(id) {
 function findCustomerRowById(sheet, id) {
   var lastRow = sheet.getLastRow();
 
-  if (lastRow < CONFIG.FIRST_DATA_ROW) {
+  if (lastRow < CUSTOMER_CONFIG.FIRST_DATA_ROW) {
     return -1;
   }
 
-  var numberOfRows = lastRow - CONFIG.FIRST_DATA_ROW + 1;
+  var numberOfRows = lastRow - CUSTOMER_CONFIG.FIRST_DATA_ROW + 1;
   var ids = sheet
-    .getRange(CONFIG.FIRST_DATA_ROW, CONFIG.COLUMNS.id, numberOfRows, 1)
+    .getRange(CUSTOMER_CONFIG.FIRST_DATA_ROW, CUSTOMER_CONFIG.COLUMNS.id, numberOfRows, 1)
     .getDisplayValues()
     .flat();
 
@@ -393,7 +393,7 @@ function findCustomerRowById(sheet, id) {
     return -1;
   }
 
-  return CONFIG.FIRST_DATA_ROW + index;
+  return CUSTOMER_CONFIG.FIRST_DATA_ROW + index;
 }
 
 function generateCustomerId(sheet) {
