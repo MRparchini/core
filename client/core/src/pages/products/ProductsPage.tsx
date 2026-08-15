@@ -213,13 +213,11 @@ export function ProductsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Kitchen name</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Description</TableHead>
-                <TableHead>Updated</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -245,7 +243,6 @@ export function ProductsPage() {
 
               {products.map((product) => (
                 <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.id}</TableCell>
                   <TableCell className="font-medium">{product.name || 'Unnamed product'}</TableCell>
                   <TableCell>{product.kitchenName || '-'}</TableCell>
                   <TableCell>{product.category || '-'}</TableCell>
@@ -255,7 +252,6 @@ export function ProductsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="max-w-[260px] truncate">{product.description || '-'}</TableCell>
-                  <TableCell>{product.updatedAt || '-'}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" size="sm" onClick={() => openEditProduct(product)}>

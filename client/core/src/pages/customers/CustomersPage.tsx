@@ -207,7 +207,6 @@ export function CustomersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
                 <TableHead>Code</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Address</TableHead>
@@ -247,7 +246,6 @@ export function CustomersPage() {
                     if (event.key === 'Enter') openCustomerProfile(customer)
                   }}
                 >
-                  <TableCell className="font-medium">{customer.id}</TableCell>
                   <TableCell>{customer.code || '-'}</TableCell>
                   <TableCell className="font-medium">
                     <Link
