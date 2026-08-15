@@ -109,6 +109,7 @@ export async function getCustomers({
     signal,
     params: {
       ...serviceParams(),
+      service: "customer",
       action: 'getAll',
       page,
       pageSize,
@@ -197,6 +198,7 @@ export async function getCustomerById(id: string) {
   const response = await customersClient.get<ApiResponse<Customer>>('', {
     params: {
       ...serviceParams(),
+      service: "customer",
       action: 'getById',
       id,
       ...apiKeyParams(),
@@ -213,6 +215,7 @@ export async function createCustomer(customer: CustomerDraft) {
     '',
     JSON.stringify({
       ...serviceBody(),
+      service: "customer",
       action: 'create',
       customer,
       ...apiKeyBody(),
@@ -235,6 +238,7 @@ export async function updateCustomer(id: string, customer: CustomerUpdate) {
     '',
     JSON.stringify({
       ...serviceBody(),
+      service: "customer",
       action: 'update',
       id,
       customer,
@@ -258,6 +262,7 @@ export async function deleteCustomer(id: string) {
     '',
     JSON.stringify({
       ...serviceBody(),
+      service: "customer",
       action: 'delete',
       id,
       ...apiKeyBody(),

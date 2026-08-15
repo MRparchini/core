@@ -104,7 +104,7 @@ export async function getProducts({
   const response = await productsClient.get<ApiResponse<Product[]>>('', {
     signal,
     params: {
-      service: 'products',
+      service: 'product',
       action: 'getAll',
       page,
       pageSize,
@@ -174,7 +174,7 @@ export async function getProductById(id: string) {
 
   const response = await productsClient.get<ApiResponse<Product>>('', {
     params: {
-      service: 'products',
+      service: 'product',
       action: 'getById',
       id,
       ...apiKeyParams(),
@@ -190,7 +190,7 @@ export async function createProduct(product: ProductDraft) {
   const response = await productsClient.post<ApiResponse<Product>>(
     '',
     JSON.stringify({
-      service: 'products',
+      service: 'product',
       action: 'create',
       product,
       ...apiKeyBody(),
@@ -212,7 +212,7 @@ export async function updateProduct(id: string, product: ProductUpdate) {
   const response = await productsClient.post<ApiResponse<Product>>(
     '',
     JSON.stringify({
-      service: 'products',
+      service: 'product',
       action: 'update',
       id,
       product,
@@ -235,7 +235,7 @@ export async function deleteProduct(id: string) {
   const response = await productsClient.post<ApiResponse<Product>>(
     '',
     JSON.stringify({
-      service: 'products',
+      service: 'product',
       action: 'delete',
       id,
       ...apiKeyBody(),
