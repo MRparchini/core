@@ -9,6 +9,112 @@ function getCustomersSheet() {
   return sheet;
 }
 
+var CUSTOMER_ROWS_CACHE_KEY = 'customers:rows:v1';
+var CUSTOMER_ROWS_CACHE_META_KEY = CUSTOMER_ROWS_CACHE_KEY + ':meta';
+var CUSTOMER_ROWS_CACHE_TTL_SECONDS = 30;
+var CUSTOMER_ROWS_CACHE_CHUNK_SIZE = 75000;
+
+function getCustomerRowsForSearch(sheet, lastRow) {
+  var cachedRows = getCachedCustomerRows(lastRow);
+
+  if (cachedRows) {
+    return cachedRows;
+  }
+
+  var numberOfRows = lastRow - CONFIG.FIRST_DATA_ROW + 1;
+  var rows = sheet
+    .getRange(CONFIG.FIRST_DATA_ROW, 1, numberOfRows, CONFIG.TOTAL_COLUMNS)
+    .getDisplayValues();
+
+  cacheCustomerRows(rows, lastRow);
+
+  return rows;
+}
+
+function getCachedCustomerRows(lastRow) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var metaValue = cache.get(CUSTOMER_ROWS_CACHE_META_KEY);
+
+    if (!metaValue) {
+      return null;
+    }
+
+    var meta = JSON.parse(metaValue);
+
+    if (meta.lastRow !== lastRow || meta.columns !== CONFIG.TOTAL_COLUMNS || meta.chunks < 1) {
+      return null;
+    }
+
+    var payload = '';
+
+    for (var index = 0; index < meta.chunks; index += 1) {
+      var chunk = cache.get(CUSTOMER_ROWS_CACHE_KEY + ':' + index);
+
+      if (chunk === null) {
+        return null;
+      }
+
+      payload += chunk;
+    }
+
+    return JSON.parse(payload);
+  } catch (error) {
+    return null;
+  }
+}
+
+function cacheCustomerRows(rows, lastRow) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var payload = JSON.stringify(rows);
+    var chunks = Math.ceil(payload.length / CUSTOMER_ROWS_CACHE_CHUNK_SIZE);
+
+    for (var index = 0; index < chunks; index += 1) {
+      cache.put(
+        CUSTOMER_ROWS_CACHE_KEY + ':' + index,
+        payload.slice(
+          index * CUSTOMER_ROWS_CACHE_CHUNK_SIZE,
+          (index + 1) * CUSTOMER_ROWS_CACHE_CHUNK_SIZE
+        ),
+        CUSTOMER_ROWS_CACHE_TTL_SECONDS
+      );
+    }
+
+    cache.put(
+      CUSTOMER_ROWS_CACHE_META_KEY,
+      JSON.stringify({
+        lastRow: lastRow,
+        columns: CONFIG.TOTAL_COLUMNS,
+        chunks: chunks
+      }),
+      CUSTOMER_ROWS_CACHE_TTL_SECONDS
+    );
+  } catch (error) {
+    // CacheService is opportunistic; sheet reads remain the source of truth.
+  }
+}
+
+function clearCustomersCache() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var keys = [CUSTOMER_ROWS_CACHE_META_KEY];
+    var metaValue = cache.get(CUSTOMER_ROWS_CACHE_META_KEY);
+
+    if (metaValue) {
+      var meta = JSON.parse(metaValue);
+
+      for (var index = 0; index < meta.chunks; index += 1) {
+        keys.push(CUSTOMER_ROWS_CACHE_KEY + ':' + index);
+      }
+    }
+
+    cache.removeAll(keys);
+  } catch (error) {
+    // The next read will fall back to the sheet if cache invalidation fails.
+  }
+}
+
 function getCustomersPage(options) {
   var sheet = getCustomersSheet();
   var lastRow = sheet.getLastRow();
@@ -47,10 +153,7 @@ function getCustomersPage(options) {
 }
 
 function searchCustomersPage(sheet, lastRow, page, pageSize, query) {
-  var numberOfRows = lastRow - CONFIG.FIRST_DATA_ROW + 1;
-  var rows = sheet
-    .getRange(CONFIG.FIRST_DATA_ROW, 1, numberOfRows, CONFIG.TOTAL_COLUMNS)
-    .getDisplayValues();
+  var rows = getCustomerRowsForSearch(sheet, lastRow);
 
   var matchedCustomers = rows
     .filter(function(row) {
@@ -181,6 +284,7 @@ function createCustomer(customer) {
     .setValues([row]);
 
   SpreadsheetApp.flush();
+  clearCustomersCache();
 
   return rowToCustomer(row);
 }
@@ -242,6 +346,7 @@ function updateCustomer(id, customer) {
     .setValues([updatedRow]);
 
   SpreadsheetApp.flush();
+  clearCustomersCache();
 
   return currentCustomer;
 }
@@ -262,6 +367,7 @@ function deleteCustomer(id) {
 
   sheet.deleteRow(rowNumber);
   SpreadsheetApp.flush();
+  clearCustomersCache();
 
   return deletedCustomer;
 }

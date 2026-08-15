@@ -68,7 +68,7 @@ export function CustomersPage() {
         pageSize: customerPageSize,
         query: searchQuery,
       })
-    }, 250)
+    }, 500)
 
     return () => window.clearTimeout(timeoutId)
   }, [customerPage, customerPageSize, fetchCustomers, searchQuery])
@@ -199,6 +199,7 @@ export function CustomersPage() {
               onChange={setSearchQuery}
               resultCount={customers.length}
               totalCount={totalCustomers}
+              isLoading={isLoading}
             />
           </div>
         </CardHeader>
@@ -217,7 +218,7 @@ export function CustomersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && (
+              {isLoading && customers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="h-28 text-center text-muted-foreground">
                     <span className="inline-flex items-center gap-2">
@@ -236,7 +237,7 @@ export function CustomersPage() {
                 </TableRow>
               )}
 
-              {!isLoading && customers.map((customer) => (
+              {customers.map((customer) => (
                 <TableRow
                   key={customer.id}
                   className="cursor-pointer"

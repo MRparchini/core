@@ -5,6 +5,7 @@ import {
   deleteCustomer as deleteCustomerRequest,
   getCustomerById as getCustomerByIdRequest,
   getCustomers as getCustomersRequest,
+  isCustomersRequestCanceled,
   updateCustomer as updateCustomerRequest,
   type Customer,
   type CustomerDraft,
@@ -37,8 +38,28 @@ interface CustomersState {
   deleteCustomer: (id: string) => Promise<void>
 }
 
+let latestCustomersRequestId = 0
+let activeCustomersAbortController: AbortController | null = null
+
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unexpected customer request error.'
+}
+
+function startCustomersRequest() {
+  latestCustomersRequestId += 1
+  activeCustomersAbortController?.abort()
+
+  const requestId = latestCustomersRequestId
+  const abortController = new AbortController()
+  activeCustomersAbortController = abortController
+
+  return { abortController, requestId }
+}
+
+function finishCustomersRequest(abortController: AbortController) {
+  if (activeCustomersAbortController === abortController) {
+    activeCustomersAbortController = null
+  }
 }
 
 export const useCustomersStore = create<CustomersState>((set, get) => ({
@@ -67,11 +88,31 @@ export const useCustomersStore = create<CustomersState>((set, get) => ({
     const page = options.page ?? state.customerPage
     const pageSize = options.pageSize ?? state.customerPageSize
     const query = options.query ?? state.searchQuery
+    const { abortController, requestId } = startCustomersRequest()
 
-    set({ isLoading: true, error: null })
+    const isCurrentRequest = () => {
+      const currentState = get()
+
+      return (
+        requestId === latestCustomersRequestId &&
+        page === currentState.customerPage &&
+        pageSize === currentState.customerPageSize &&
+        query === currentState.searchQuery
+      )
+    }
+
+    set({ isLoading: true })
 
     try {
-      const result = await getCustomersRequest({ page, pageSize, query })
+      const result = await getCustomersRequest({
+        page,
+        pageSize,
+        query,
+        signal: abortController.signal,
+      })
+
+      if (!isCurrentRequest()) return
+
       set({
         customers: result.customers,
         customerPage: result.pagination.page,
@@ -81,9 +122,14 @@ export const useCustomersStore = create<CustomersState>((set, get) => ({
         hasPreviousPage: result.pagination.hasPreviousPage,
         hasNextPage: result.pagination.hasNextPage,
         isLoading: false,
+        error: null,
       })
     } catch (error) {
+      if (isCustomersRequestCanceled(error) || !isCurrentRequest()) return
+
       set({ error: getErrorMessage(error), isLoading: false })
+    } finally {
+      finishCustomersRequest(abortController)
     }
   },
 

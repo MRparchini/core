@@ -7,6 +7,7 @@ interface CustomerSearchProps {
   onChange: (value: string) => void
   resultCount: number
   totalCount: number
+  isLoading?: boolean
   placeholder?: string
 }
 
@@ -15,8 +16,18 @@ export function CustomerSearch({
   onChange,
   resultCount,
   totalCount,
+  isLoading = false,
   placeholder = 'Search by postcode, address, phone, name, code, ID, or notes',
 }: CustomerSearchProps) {
+  const trimmedValue = value.trim()
+  let statusText = `${totalCount} customers available`
+
+  if (isLoading) {
+    statusText = trimmedValue ? 'Searching customers...' : 'Refreshing customers...'
+  } else if (trimmedValue) {
+    statusText = `${resultCount} of ${totalCount} customers matched`
+  }
+
   return (
     <div className="grid gap-2">
       <div className="relative w-full">
@@ -28,11 +39,7 @@ export function CustomerSearch({
           placeholder={placeholder}
         />
       </div>
-      <p className="text-xs text-muted-foreground">
-        {value.trim()
-          ? `${resultCount} of ${totalCount} customers matched`
-          : `${totalCount} customers available`}
-      </p>
+      <p className="text-xs text-muted-foreground">{statusText}</p>
     </div>
   )
 }

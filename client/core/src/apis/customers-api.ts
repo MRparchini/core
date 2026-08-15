@@ -17,6 +17,7 @@ export interface CustomersQuery {
   page?: number
   pageSize?: number
   query?: string
+  signal?: AbortSignal
 }
 
 export interface CustomerPagination {
@@ -50,7 +51,7 @@ interface ApiResponse<T> {
 
 const appsScriptUrl = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL as string | undefined
 const appsScriptApiKey = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_API_KEY as string | undefined
-const customersApiTimeoutMs = Number(import.meta.env.VITE_CUSTOMERS_API_TIMEOUT_MS || 60000)
+const customersApiTimeoutMs = Number(import.meta.env.VITE_CUSTOMERS_API_TIMEOUT_MS || 30000)
 const devProxyUrl = '/google-app-script'
 const apiBaseUrl = import.meta.env.DEV ? devProxyUrl : appsScriptUrl
 
@@ -84,10 +85,20 @@ function unwrapResponse<T>(response: ApiResponse<T>) {
 
 export const isCustomersApiConfigured = Boolean(appsScriptUrl)
 
-export async function getCustomers({ page = 1, pageSize = 50, query = '' }: CustomersQuery = {}) {
+export function isCustomersRequestCanceled(error: unknown) {
+  return axios.isCancel(error) || (axios.isAxiosError(error) && error.code === 'ERR_CANCELED')
+}
+
+export async function getCustomers({
+  page = 1,
+  pageSize = 50,
+  query = '',
+  signal,
+}: CustomersQuery = {}) {
   assertConfigured()
 
   const response = await customersClient.get<ApiResponse<Customer[]>>('', {
+    signal,
     params: {
       action: 'getAll',
       page,
