@@ -1,12 +1,14 @@
 import { create } from 'zustand'
 
 import {
+  activateProduct as activateProductRequest,
   createProduct as createProductRequest,
-  deleteProduct as deleteProductRequest,
+  deactivateProduct as deactivateProductRequest,
   getProducts as getProductsRequest,
   isProductsRequestCanceled,
   updateProduct as updateProductRequest,
   type Product,
+  type ProductActiveStatus,
   type ProductDraft,
   type ProductUpdate,
 } from '@/apis/products-api'
@@ -15,6 +17,7 @@ interface ProductsState {
   products: Product[]
   selectedProduct: Product | null
   searchQuery: string
+  activeStatus: ProductActiveStatus
   productPage: number
   productPageSize: number
   totalProducts: number
@@ -24,14 +27,17 @@ interface ProductsState {
   isLoading: boolean
   isSaving: boolean
   error: string | null
+  successMessage: string | null
   setSearchQuery: (searchQuery: string) => void
+  setActiveStatus: (activeStatus: ProductActiveStatus) => void
   setProductPage: (page: number) => void
   setProductPageSize: (pageSize: number) => void
   setSelectedProduct: (product: Product | null) => void
-  fetchProducts: (options?: { page?: number; pageSize?: number; query?: string }) => Promise<void>
+  fetchProducts: (options?: { page?: number; pageSize?: number; query?: string; activeStatus?: ProductActiveStatus }) => Promise<void>
   createProduct: (product: ProductDraft) => Promise<void>
   updateProduct: (id: string, product: ProductUpdate) => Promise<void>
-  deleteProduct: (id: string) => Promise<void>
+  activateProduct: (id: string) => Promise<void>
+  deactivateProduct: (id: string) => Promise<void>
 }
 
 let latestProductsRequestId = 0
@@ -62,6 +68,7 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
   products: [],
   selectedProduct: null,
   searchQuery: '',
+  activeStatus: 'active',
   productPage: 1,
   productPageSize: 50,
   totalProducts: 0,
@@ -71,8 +78,10 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
   isLoading: false,
   isSaving: false,
   error: null,
+  successMessage: null,
 
   setSearchQuery: (searchQuery) => set({ searchQuery, productPage: 1 }),
+  setActiveStatus: (activeStatus) => set({ activeStatus, productPage: 1 }),
   setProductPage: (productPage) => set({ productPage: Math.max(1, productPage) }),
   setProductPageSize: (productPageSize) => set({ productPageSize, productPage: 1 }),
   setSelectedProduct: (selectedProduct) => set({ selectedProduct }),
@@ -82,6 +91,7 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
     const page = options.page ?? state.productPage
     const pageSize = options.pageSize ?? state.productPageSize
     const query = options.query ?? state.searchQuery
+    const activeStatus = options.activeStatus ?? state.activeStatus
     const { abortController, requestId } = startProductsRequest()
 
     const isCurrentRequest = () => {
@@ -91,7 +101,8 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
         requestId === latestProductsRequestId &&
         page === currentState.productPage &&
         pageSize === currentState.productPageSize &&
-        query === currentState.searchQuery
+        query === currentState.searchQuery &&
+        activeStatus === currentState.activeStatus
       )
     }
 
@@ -102,6 +113,7 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
         page,
         pageSize,
         query,
+        activeStatus,
         signal: abortController.signal,
       })
 
@@ -128,11 +140,11 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
   },
 
   createProduct: async (product) => {
-    set({ isSaving: true, error: null })
+    set({ isSaving: true, error: null, successMessage: null })
 
     try {
       await createProductRequest(product)
-      set({ isSaving: false })
+      set({ isSaving: false, successMessage: 'Product created.' })
       await get().fetchProducts({ page: get().productPage })
     } catch (error) {
       set({ error: getErrorMessage(error), isSaving: false })
@@ -141,7 +153,7 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
   },
 
   updateProduct: async (id, product) => {
-    set({ isSaving: true, error: null })
+    set({ isSaving: true, error: null, successMessage: null })
 
     try {
       const updatedProduct = await updateProductRequest(id, product)
@@ -151,19 +163,34 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
         ),
         selectedProduct: null,
         isSaving: false,
+        successMessage: 'Product updated.',
       }))
+      await get().fetchProducts({ page: get().productPage })
     } catch (error) {
       set({ error: getErrorMessage(error), isSaving: false })
       throw error
     }
   },
 
-  deleteProduct: async (id) => {
-    set({ isSaving: true, error: null })
+  activateProduct: async (id) => {
+    set({ isSaving: true, error: null, successMessage: null })
 
     try {
-      await deleteProductRequest(id)
-      set({ selectedProduct: null, isSaving: false })
+      await activateProductRequest(id)
+      set({ selectedProduct: null, isSaving: false, successMessage: 'Product activated.' })
+      await get().fetchProducts({ page: get().productPage })
+    } catch (error) {
+      set({ error: getErrorMessage(error), isSaving: false })
+      throw error
+    }
+  },
+
+  deactivateProduct: async (id) => {
+    set({ isSaving: true, error: null, successMessage: null })
+
+    try {
+      await deactivateProductRequest(id)
+      set({ selectedProduct: null, isSaving: false, successMessage: 'Product deactivated.' })
       await get().fetchProducts({ page: get().productPage })
     } catch (error) {
       set({ error: getErrorMessage(error), isSaving: false })

@@ -64,15 +64,7 @@ function apiCreateProduct(product) {
 
 function apiUpdateProduct(id, product) {
   var productId = normalizeId(id, 'Product ID');
-
-  if (!product || typeof product !== 'object') {
-    return jsonResponse({
-      success: false,
-      code: 400,
-      message: 'product object is required.',
-      data: null
-    });
-  }
+  validateProductForUpdate(product);
 
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
@@ -100,15 +92,27 @@ function apiUpdateProduct(id, product) {
 }
 
 function apiDeleteProduct(id) {
+  return apiSetProductActive(id, false, 'Product deactivated successfully.');
+}
+
+function apiActivateProduct(id) {
+  return apiSetProductActive(id, true, 'Product activated successfully.');
+}
+
+function apiDeactivateProduct(id) {
+  return apiSetProductActive(id, false, 'Product deactivated successfully.');
+}
+
+function apiSetProductActive(id, isActive, message) {
   var productId = normalizeId(id, 'Product ID');
 
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
 
   try {
-    var deletedProduct = deleteProduct(productId);
+    var updatedProduct = setProductActive(productId, isActive);
 
-    if (!deletedProduct) {
+    if (!updatedProduct) {
       return jsonResponse({
         success: false,
         code: 404,
@@ -119,8 +123,8 @@ function apiDeleteProduct(id) {
 
     return jsonResponse({
       success: true,
-      message: 'Product deleted successfully.',
-      data: deletedProduct
+      message: message,
+      data: updatedProduct
     });
   } finally {
     lock.releaseLock();

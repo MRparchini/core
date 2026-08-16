@@ -376,7 +376,7 @@ function assertMenuNameIsUnique(sheet, name, ignoredId) {
   var normalizedName = normalizeMenuName(name);
 
   if (!normalizedName) {
-    throw new Error('Menu name is required.');
+    throw validationError('Menu name is required.');
   }
 
   var rows = getMenuRows(sheet, sheet.getLastRow());
@@ -387,7 +387,7 @@ function assertMenuNameIsUnique(sheet, name, ignoredId) {
   });
 
   if (duplicate) {
-    throw new Error('Menu name must be unique.');
+    throw duplicateError('Menu name must be unique.');
   }
 }
 
@@ -403,7 +403,7 @@ function normalizeMenuSortOrderValue(value) {
   var number = Number(value);
 
   if (!Number.isFinite(number) || number < 0 || Math.floor(number) !== number) {
-    throw new Error('Sort order must be a non-negative integer.');
+    throw validationError('Sort order must be a non-negative integer.');
   }
 
   return number;

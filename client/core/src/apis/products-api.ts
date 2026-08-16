@@ -13,11 +13,13 @@ export interface Product {
 
 export type ProductDraft = Pick<Product, 'name' | 'kitchenName' | 'category' | 'isActive' | 'description'>
 export type ProductUpdate = Partial<ProductDraft>
+export type ProductActiveStatus = 'all' | 'active' | 'inactive'
 
 export interface ProductsQuery {
   page?: number
   pageSize?: number
   query?: string
+  activeStatus?: ProductActiveStatus
   signal?: AbortSignal
 }
 
@@ -97,6 +99,7 @@ export async function getProducts({
   page = 1,
   pageSize = 50,
   query = '',
+  activeStatus = 'active',
   signal,
 }: ProductsQuery = {}): Promise<ProductsResult> {
   assertConfigured()
@@ -108,6 +111,7 @@ export async function getProducts({
       action: 'getAll',
       page,
       pageSize,
+      active: activeStatus,
       ...(query.trim() ? { query: query.trim() } : {}),
       ...apiKeyParams(),
     },
@@ -122,7 +126,7 @@ export async function getProducts({
     }
   }
 
-  const filteredProducts = filterProductsFallback(products, query)
+  const filteredProducts = filterProductsFallback(products, query, activeStatus)
   const fallbackTotal = response.data.total ?? (query.trim() ? filteredProducts.length : response.data.count ?? filteredProducts.length)
   const totalPages = Math.max(1, Math.ceil(fallbackTotal / pageSize))
   const startIndex = (page - 1) * pageSize
@@ -140,14 +144,15 @@ export async function getProducts({
   }
 }
 
-function filterProductsFallback(products: Product[], query: string) {
+function filterProductsFallback(products: Product[], query: string, activeStatus: ProductActiveStatus) {
   const normalizedQuery = normalizeProductSearchText(query)
-
-  if (!normalizedQuery) return products
-
   const tokens = normalizedQuery.split(' ').filter(Boolean)
 
   return products.filter((product) => {
+    if (activeStatus === 'active' && !product.isActive) return false
+    if (activeStatus === 'inactive' && product.isActive) return false
+    if (!normalizedQuery) return true
+
     const normalizedSearchableText = normalizeProductSearchText([
       product.name,
       product.kitchenName,
@@ -229,14 +234,26 @@ export async function updateProduct(id: string, product: ProductUpdate) {
   return unwrapResponse(response.data)
 }
 
+export async function activateProduct(id: string) {
+  return setProductActive(id, true)
+}
+
+export async function deactivateProduct(id: string) {
+  return setProductActive(id, false)
+}
+
 export async function deleteProduct(id: string) {
+  return deactivateProduct(id)
+}
+
+async function setProductActive(id: string, isActive: boolean) {
   assertConfigured()
 
   const response = await productsClient.post<ApiResponse<Product>>(
     '',
     JSON.stringify({
       service: 'product',
-      action: 'delete',
+      action: isActive ? 'activate' : 'deactivate',
       id,
       ...apiKeyBody(),
     }),

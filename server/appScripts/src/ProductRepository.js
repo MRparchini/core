@@ -126,40 +126,18 @@ function getProductsPage(options) {
     return buildProductsPageResult([], 0, page, pageSize);
   }
 
-  if (query) {
-    return searchProductsPage(sheet, lastRow, page, pageSize, query);
-  }
-
-  var total = lastRow - PRODUCT_CONFIG.FIRST_DATA_ROW + 1;
-  var startOffset = (page - 1) * pageSize;
-
-  if (startOffset >= total) {
-    return buildProductsPageResult([], total, page, pageSize);
-  }
-
-  var startRow = PRODUCT_CONFIG.FIRST_DATA_ROW + startOffset;
-  var numberOfRows = Math.min(pageSize, total - startOffset);
-  var rows = sheet
-    .getRange(startRow, 1, numberOfRows, PRODUCT_CONFIG.TOTAL_COLUMNS)
-    .getDisplayValues();
-
-  var products = rows
+  var rows = getProductRowsForSearch(sheet, lastRow);
+  var matchedProducts = rows
     .filter(function(row) {
       return String(row[0]).trim() !== '';
     })
-    .map(rowToProduct);
-
-  return buildProductsPageResult(products, total, page, pageSize);
-}
-
-function searchProductsPage(sheet, lastRow, page, pageSize, query) {
-  var rows = getProductRowsForSearch(sheet, lastRow);
-
-  var matchedProducts = rows
-    .filter(function(row) {
-      return String(row[0]).trim() !== '' && productRowMatchesQuery(row, query);
+    .map(rowToProduct)
+    .filter(function(product) {
+      return productMatchesActiveFilter(product, options.active);
     })
-    .map(rowToProduct);
+    .filter(function(product) {
+      return productMatchesQuery(product, query);
+    });
 
   var startOffset = (page - 1) * pageSize;
   var products = matchedProducts.slice(startOffset, startOffset + pageSize);
@@ -167,7 +145,19 @@ function searchProductsPage(sheet, lastRow, page, pageSize, query) {
   return buildProductsPageResult(products, matchedProducts.length, page, pageSize);
 }
 
-function productRowMatchesQuery(row, query) {
+function productMatchesActiveFilter(product, active) {
+  if (active === true) {
+    return product.isActive === true;
+  }
+
+  if (active === false) {
+    return product.isActive === false;
+  }
+
+  return true;
+}
+
+function productMatchesQuery(product, query) {
   var normalizedQuery = normalizeProductSearchText(query);
   var tokens = normalizedQuery.split(' ').filter(Boolean);
 
@@ -175,7 +165,6 @@ function productRowMatchesQuery(row, query) {
     return true;
   }
 
-  var product = rowToProduct(row);
   var searchableText = [
     product.name,
     product.kitchenName
@@ -299,25 +288,12 @@ function updateProduct(id, product) {
   return rowToProduct(updatedRow);
 }
 
+function setProductActive(id, isActive) {
+  return updateProduct(id, { isActive: isActive });
+}
+
 function deleteProduct(id) {
-  var sheet = getProductsSheet();
-  var rowNumber = findProductRowById(sheet, id);
-
-  if (rowNumber === -1) {
-    return null;
-  }
-
-  var deletedRow = sheet
-    .getRange(rowNumber, 1, 1, PRODUCT_CONFIG.TOTAL_COLUMNS)
-    .getDisplayValues()[0];
-
-  var deletedProduct = rowToProduct(deletedRow);
-
-  sheet.deleteRow(rowNumber);
-  SpreadsheetApp.flush();
-  clearProductsCache();
-
-  return deletedProduct;
+  return setProductActive(id, false);
 }
 
 function findProductRowById(sheet, id) {

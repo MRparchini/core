@@ -1,4 +1,4 @@
-import { Bell, LayoutDashboard, Menu, Package, Search, SquareMenu, Users } from 'lucide-react'
+import { Bell, LayoutDashboard, ListOrdered, Menu, Package, Search, SquareMenu, Users } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router'
 
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 const navigation = [
   { label: 'Customers', path: '/customers', icon: Users },
   { label: 'Menus', path: '/menus', icon: SquareMenu },
+  { label: 'Menu Items', path: '/menu-items', icon: ListOrdered },
   { label: 'Products', path: '/products', icon: Package },
   { label: 'Report', path: '/report', icon: LayoutDashboard },
 ]
@@ -65,4 +66,3 @@ export function AppLayout() {
     </div>
   )
 }
-

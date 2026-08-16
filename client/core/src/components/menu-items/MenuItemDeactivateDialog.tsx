@@ -1,6 +1,6 @@
 import { Loader2 } from 'lucide-react'
 
-import type { Product } from '@/apis/products-api'
+import type { MenuItem } from '@/apis/menu-items-api'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,41 +12,41 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-interface ProductDeleteDialogProps {
-  product: Product | null
+interface MenuItemDeactivateDialogProps {
+  menuItem: MenuItem | null
   open: boolean
   isSaving: boolean
   onOpenChange: (open: boolean) => void
-  onDelete: () => Promise<void>
+  onDeactivate: () => Promise<void>
 }
 
-export function ProductDeleteDialog({
-  product,
+export function MenuItemDeactivateDialog({
+  menuItem,
   open,
   isSaving,
   onOpenChange,
-  onDelete,
-}: ProductDeleteDialogProps) {
+  onDeactivate,
+}: MenuItemDeactivateDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Deactivate product</DialogTitle>
+          <DialogTitle>Deactivate menu item</DialogTitle>
           <DialogDescription>
-            This keeps the row in the Products worksheet and hides it from active product selections.
+            This keeps the row in the MenuItems worksheet and removes this relationship from effective availability.
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-md border bg-muted/40 p-4 text-sm">
-          <p className="font-medium">{product?.name || 'Unnamed product'}</p>
-          <p className="text-muted-foreground">ID {product?.id}</p>
+          <p className="font-medium">{menuItem?.effectiveDisplayName || 'Unnamed menu item'}</p>
+          <p className="text-muted-foreground">{menuItem?.menuName || 'Unknown menu'} / {menuItem?.productName || 'Unknown product'}</p>
         </div>
         <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="outline">Cancel</Button>
           </DialogClose>
-          <Button variant="destructive" onClick={() => void onDelete()} disabled={isSaving}>
+          <Button variant="destructive" onClick={() => void onDeactivate()} disabled={isSaving}>
             {isSaving && <Loader2 className="size-4 animate-spin" />}
-            Deactivate product
+            Deactivate menu item
           </Button>
         </DialogFooter>
       </DialogContent>

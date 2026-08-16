@@ -51,10 +51,42 @@ function normalizeApiService(service) {
     return 'menus';
   }
 
+  if (
+    normalizedService === 'menuitem' ||
+    normalizedService === 'menuitems' ||
+    normalizedService === 'menu-item' ||
+    normalizedService === 'menu-items'
+  ) {
+    return 'menuItems';
+  }
+
   return normalizedService;
 }
 
+function getMenuItemPayload(body) {
+  return body.menuItem || body.menuItems || body['menu-item'] || body['menu-items'];
+}
+
 function handleGetServiceAction(service, action, params) {
+  if (service === 'menuItems') {
+    switch (action) {
+      case 'getAll':
+      case 'search':
+        return apiGetAllMenuItems(params);
+
+      case 'getById':
+        return apiGetMenuItemById(params.id);
+
+      default:
+        return jsonResponse({
+          success: false,
+          code: 400,
+          message: 'Invalid menuItems GET action.',
+          data: null
+        });
+    }
+  }
+
   if (service === 'menus') {
     switch (action) {
       case 'getAll':
@@ -73,9 +105,11 @@ function handleGetServiceAction(service, action, params) {
         });
     }
   }
+
   if (service === 'products') {
     switch (action) {
       case 'getAll':
+      case 'search':
         return apiGetAllProducts(params);
 
       case 'getById':
@@ -118,6 +152,33 @@ function handleGetServiceAction(service, action, params) {
 }
 
 function handlePostServiceAction(service, body) {
+  if (service === 'menuItems') {
+    switch (body.action) {
+      case 'create':
+        return apiCreateMenuItem(getMenuItemPayload(body));
+
+      case 'update':
+        return apiUpdateMenuItem(body.id, getMenuItemPayload(body));
+
+      case 'activate':
+        return apiActivateMenuItem(body.id);
+
+      case 'deactivate':
+        return apiDeactivateMenuItem(body.id);
+
+      case 'delete':
+        return apiDeleteMenuItem(body.id);
+
+      default:
+        return jsonResponse({
+          success: false,
+          code: 400,
+          message: 'Invalid menuItems POST action.',
+          data: null
+        });
+    }
+  }
+
   if (service === 'menus') {
     switch (body.action) {
       case 'create':
@@ -144,6 +205,7 @@ function handlePostServiceAction(service, body) {
         });
     }
   }
+
   if (service === 'products') {
     switch (body.action) {
       case 'create':
@@ -151,6 +213,12 @@ function handlePostServiceAction(service, body) {
 
       case 'update':
         return apiUpdateProduct(body.id, body.product);
+
+      case 'activate':
+        return apiActivateProduct(body.id);
+
+      case 'deactivate':
+        return apiDeactivateProduct(body.id);
 
       case 'delete':
         return apiDeleteProduct(body.id);
@@ -193,4 +261,3 @@ function handlePostServiceAction(service, body) {
     data: null
   });
 }
-

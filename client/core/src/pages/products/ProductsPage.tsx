@@ -1,4 +1,4 @@
-import { AlertCircle, Edit, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Edit, Eye, EyeOff, Loader2, Plus, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { isProductsApiConfigured, type Product, type ProductDraft } from '@/apis/products-api'
@@ -35,6 +35,7 @@ import { useProductsStore } from '@/context/products-store'
 export function ProductsPage() {
   const products = useProductsStore((state) => state.products)
   const searchQuery = useProductsStore((state) => state.searchQuery)
+  const activeStatus = useProductsStore((state) => state.activeStatus)
   const productPage = useProductsStore((state) => state.productPage)
   const productPageSize = useProductsStore((state) => state.productPageSize)
   const totalProducts = useProductsStore((state) => state.totalProducts)
@@ -44,15 +45,18 @@ export function ProductsPage() {
   const isLoading = useProductsStore((state) => state.isLoading)
   const isSaving = useProductsStore((state) => state.isSaving)
   const error = useProductsStore((state) => state.error)
+  const successMessage = useProductsStore((state) => state.successMessage)
   const selectedProduct = useProductsStore((state) => state.selectedProduct)
   const setSearchQuery = useProductsStore((state) => state.setSearchQuery)
+  const setActiveStatus = useProductsStore((state) => state.setActiveStatus)
   const setProductPage = useProductsStore((state) => state.setProductPage)
   const setProductPageSize = useProductsStore((state) => state.setProductPageSize)
   const setSelectedProduct = useProductsStore((state) => state.setSelectedProduct)
   const fetchProducts = useProductsStore((state) => state.fetchProducts)
   const createProduct = useProductsStore((state) => state.createProduct)
   const updateProduct = useProductsStore((state) => state.updateProduct)
-  const deleteProduct = useProductsStore((state) => state.deleteProduct)
+  const activateProduct = useProductsStore((state) => state.activateProduct)
+  const deactivateProduct = useProductsStore((state) => state.deactivateProduct)
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -65,11 +69,12 @@ export function ProductsPage() {
         page: productPage,
         pageSize: productPageSize,
         query: searchQuery,
+        activeStatus,
       })
     }, 500)
 
     return () => window.clearTimeout(timeoutId)
-  }, [fetchProducts, productPage, productPageSize, searchQuery])
+  }, [activeStatus, fetchProducts, productPage, productPageSize, searchQuery])
 
   async function handleCreateProduct(product: ProductDraft) {
     await createProduct(product)
@@ -83,10 +88,10 @@ export function ProductsPage() {
     setEditOpen(false)
   }
 
-  async function handleDeleteProduct() {
+  async function handleDeactivateProduct() {
     if (!selectedProduct) return
 
-    await deleteProduct(selectedProduct.id)
+    await deactivateProduct(selectedProduct.id)
     setDeleteOpen(false)
   }
 
@@ -95,7 +100,7 @@ export function ProductsPage() {
     setEditOpen(true)
   }
 
-  function openDeleteProduct(product: Product) {
+  function openDeactivateProduct(product: Product) {
     setSelectedProduct(product)
     setDeleteOpen(true)
   }
@@ -114,7 +119,7 @@ export function ProductsPage() {
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
-            onClick={() => void fetchProducts({ page: productPage, pageSize: productPageSize, query: searchQuery })}
+            onClick={() => void fetchProducts({ page: productPage, pageSize: productPageSize, query: searchQuery, activeStatus })}
             disabled={isLoading || !isProductsApiConfigured}
           >
             <RefreshCw className={isLoading ? 'size-4 animate-spin' : 'size-4'} />
@@ -166,6 +171,15 @@ export function ProductsPage() {
         </Card>
       )}
 
+      {successMessage && (
+        <Card className="border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+          <CardContent className="flex gap-3 p-4 text-sm">
+            <CheckCircle2 className="mt-0.5 size-5 shrink-0" />
+            <p>{successMessage}</p>
+          </CardContent>
+        </Card>
+      )}
+
       <section className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
@@ -202,7 +216,9 @@ export function ProductsPage() {
           <div className="w-full lg:w-[420px]">
             <ProductSearch
               value={searchQuery}
+              activeStatus={activeStatus}
               onChange={setSearchQuery}
+              onActiveStatusChange={setActiveStatus}
               resultCount={products.length}
               totalCount={totalProducts}
               isLoading={isLoading}
@@ -224,7 +240,7 @@ export function ProductsPage() {
             <TableBody>
               {isLoading && products.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-28 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-28 text-center text-muted-foreground">
                     <span className="inline-flex items-center gap-2">
                       <Loader2 className="size-4 animate-spin" />
                       Loading products
@@ -235,7 +251,7 @@ export function ProductsPage() {
 
               {!isLoading && products.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-28 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-28 text-center text-muted-foreground">
                     No products found.
                   </TableCell>
                 </TableRow>
@@ -258,10 +274,17 @@ export function ProductsPage() {
                         <Edit className="size-4" />
                         Edit
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => openDeleteProduct(product)}>
-                        <Trash2 className="size-4" />
-                        Delete
-                      </Button>
+                      {product.isActive ? (
+                        <Button variant="destructive" size="sm" onClick={() => openDeactivateProduct(product)}>
+                          <EyeOff className="size-4" />
+                          Deactivate
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={() => void activateProduct(product.id)} disabled={isSaving}>
+                          <Eye className="size-4" />
+                          Activate
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -333,7 +356,7 @@ export function ProductsPage() {
         open={deleteOpen}
         isSaving={isSaving}
         onOpenChange={setDeleteOpen}
-        onDelete={handleDeleteProduct}
+        onDelete={handleDeactivateProduct}
       />
     </div>
   )

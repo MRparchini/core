@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router'
 import { AppLayout } from '@/components/layout/app-layout'
 import { CustomerProfilePage } from '@/pages/customers/CustomerProfilePage'
 import { CustomersPage } from '@/pages/customers/CustomersPage'
+import { MenuItemsPage } from '@/pages/menu-items/MenuItemsPage'
 import { MenusPage } from '@/pages/menus/MenusPage'
 import { ProductsPage } from '@/pages/products/ProductsPage'
 import { ReportPage } from '@/pages/report/ReportPage'
@@ -15,6 +16,7 @@ function App() {
         <Route path="customers" element={<CustomersPage />} />
         <Route path="customers/:customerId" element={<CustomerProfilePage />} />
         <Route path="menus" element={<MenusPage />} />
+        <Route path="menu-items" element={<MenuItemsPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="report" element={<ReportPage />} />
       </Route>
@@ -24,4 +26,3 @@ function App() {
 }
 
 export default App
-
