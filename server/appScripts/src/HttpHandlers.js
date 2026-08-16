@@ -47,10 +47,32 @@ function normalizeApiService(service) {
     return 'products';
   }
 
+  if (normalizedService === 'menu') {
+    return 'menus';
+  }
+
   return normalizedService;
 }
 
 function handleGetServiceAction(service, action, params) {
+  if (service === 'menus') {
+    switch (action) {
+      case 'getAll':
+      case 'search':
+        return apiGetAllMenus(params);
+
+      case 'getById':
+        return apiGetMenuById(params.id);
+
+      default:
+        return jsonResponse({
+          success: false,
+          code: 400,
+          message: 'Invalid menus GET action.',
+          data: null
+        });
+    }
+  }
   if (service === 'products') {
     switch (action) {
       case 'getAll':
@@ -96,6 +118,32 @@ function handleGetServiceAction(service, action, params) {
 }
 
 function handlePostServiceAction(service, body) {
+  if (service === 'menus') {
+    switch (body.action) {
+      case 'create':
+        return apiCreateMenu(body.menu);
+
+      case 'update':
+        return apiUpdateMenu(body.id, body.menu);
+
+      case 'activate':
+        return apiActivateMenu(body.id);
+
+      case 'deactivate':
+        return apiDeactivateMenu(body.id);
+
+      case 'delete':
+        return apiDeleteMenu(body.id);
+
+      default:
+        return jsonResponse({
+          success: false,
+          code: 400,
+          message: 'Invalid menus POST action.',
+          data: null
+        });
+    }
+  }
   if (service === 'products') {
     switch (body.action) {
       case 'create':
@@ -145,3 +193,4 @@ function handlePostServiceAction(service, body) {
     data: null
   });
 }
+

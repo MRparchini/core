@@ -18,6 +18,41 @@ function validateProductForCreate(product) {
   }
 }
 
+function validateMenuForCreate(menu) {
+  if (!menu || typeof menu !== 'object') {
+    throw new Error('menu object is required.');
+  }
+
+  if (!menu.name || String(menu.name).trim() === '') {
+    throw new Error('Menu name is required.');
+  }
+
+  validateMenuSortOrderInput(menu);
+}
+
+function validateMenuForUpdate(menu) {
+  if (!menu || typeof menu !== 'object') {
+    throw new Error('menu object is required.');
+  }
+
+  if (hasOwn(menu, 'name') && String(menu.name || '').trim() === '') {
+    throw new Error('Menu name is required.');
+  }
+
+  validateMenuSortOrderInput(menu);
+}
+
+function validateMenuSortOrderInput(menu) {
+  if (!hasOwn(menu, 'sortOrder') || menu.sortOrder === undefined || menu.sortOrder === null || cleanValue(menu.sortOrder) === '') {
+    return;
+  }
+
+  var sortOrder = Number(menu.sortOrder);
+
+  if (!Number.isFinite(sortOrder) || sortOrder < 0 || Math.floor(sortOrder) !== sortOrder) {
+    throw new Error('Sort order must be a non-negative integer.');
+  }
+}
 function normalizeId(id, label) {
   var idLabel = label || 'ID';
   var normalizedId = String(id === undefined ? '' : id).trim();
@@ -73,6 +108,51 @@ function normalizeProductPagination(params) {
   };
 }
 
+function normalizeMenuPagination(params) {
+  var page = normalizePositiveInteger(params.page, 1);
+  var pageSize = normalizePositiveInteger(params.pageSize, MENU_CONFIG.DEFAULT_PAGE_SIZE);
+  var query = cleanValue(params.query || params.search || '');
+  var active = normalizeMenuActiveFilter(params.active || params.isActive || params.status);
+
+  if (pageSize > MENU_CONFIG.MAX_PAGE_SIZE) {
+    pageSize = MENU_CONFIG.MAX_PAGE_SIZE;
+  }
+
+  return {
+    page: page,
+    pageSize: pageSize,
+    query: query,
+    active: active
+  };
+}
+
+function normalizeMenuActiveFilter(value) {
+  var normalizedValue = String(value === undefined || value === null ? '' : value).trim().toLowerCase();
+
+  if (!normalizedValue || normalizedValue === 'all') {
+    return null;
+  }
+
+  if (
+    normalizedValue === 'true' ||
+    normalizedValue === 'yes' ||
+    normalizedValue === '1' ||
+    normalizedValue === 'active'
+  ) {
+    return true;
+  }
+
+  if (
+    normalizedValue === 'false' ||
+    normalizedValue === 'no' ||
+    normalizedValue === '0' ||
+    normalizedValue === 'inactive'
+  ) {
+    return false;
+  }
+
+  throw new Error('Active filter must be active, inactive, or all.');
+}
 function normalizePositiveInteger(value, fallback) {
   var number = Number(value);
 
@@ -82,3 +162,4 @@ function normalizePositiveInteger(value, fallback) {
 
   return Math.floor(number);
 }
+
