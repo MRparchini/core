@@ -1,4 +1,4 @@
-import { Bell, LayoutDashboard, ListOrdered, Menu, Package, Search, SquareMenu, Users } from 'lucide-react'
+import { Bell, Layers, LayoutDashboard, ListOrdered, Menu, Package, Search, SquareMenu, Tags, Users } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router'
 
 import { Button } from '@/components/ui/button'
@@ -7,8 +7,10 @@ import { cn } from '@/lib/utils'
 
 const navigation = [
   { label: 'Customers', path: '/customers', icon: Users },
+  { label: 'Categories', path: '/categories', icon: Tags },
   { label: 'Menus', path: '/menus', icon: SquareMenu },
   { label: 'Menu Items', path: '/menu-items', icon: ListOrdered },
+  { label: 'Modifier Groups', path: '/modifier-groups', icon: Layers },
   { label: 'Products', path: '/products', icon: Package },
   { label: 'Report', path: '/report', icon: LayoutDashboard },
 ]

@@ -28,6 +28,80 @@ function validateProductForUpdate(product) {
   }
 }
 
+function validateCategoryForCreate(category) {
+  if (!category || typeof category !== 'object') {
+    throw validationError('category object is required.');
+  }
+
+  if (!cleanValue(category.name || category.Name)) {
+    throw validationError('Category name is required.');
+  }
+
+  validateCategoryApplyColorToAllItemsInput(category);
+}
+
+function validateCategoryForUpdate(category) {
+  if (!category || typeof category !== 'object') {
+    throw validationError('category object is required.');
+  }
+
+  if (hasAny(category, ['name', 'Name']) && !cleanValue(category.name !== undefined ? category.name : category.Name)) {
+    throw validationError('Category name is required.');
+  }
+
+  validateCategoryApplyColorToAllItemsInput(category);
+}
+
+function validateCategoryApplyColorToAllItemsInput(category) {
+  if (!hasAny(category, ['applyColorToAllItems', 'ApplyColorToAllItems'])) {
+    return;
+  }
+
+  var value = category.applyColorToAllItems !== undefined
+    ? category.applyColorToAllItems
+    : category.ApplyColorToAllItems;
+
+  if (value === true || value === false) {
+    return;
+  }
+
+  var normalizedValue = cleanValue(value).toLowerCase();
+
+  if (
+    normalizedValue === 'true' ||
+    normalizedValue === 'false' ||
+    normalizedValue === 'yes' ||
+    normalizedValue === 'no' ||
+    normalizedValue === '1' ||
+    normalizedValue === '0' ||
+    normalizedValue === ''
+  ) {
+    return;
+  }
+
+  throw validationError('ApplyColorToAllItems must be a boolean value.');
+}
+
+function validateModifierGroupForCreate(modifierGroup) {
+  if (!modifierGroup || typeof modifierGroup !== 'object') {
+    throw validationError('modifierGroup object is required.');
+  }
+
+  if (!cleanValue(modifierGroup.name || modifierGroup.Name)) {
+    throw validationError('Modifier group name is required.');
+  }
+}
+
+function validateModifierGroupForUpdate(modifierGroup) {
+  if (!modifierGroup || typeof modifierGroup !== 'object') {
+    throw validationError('modifierGroup object is required.');
+  }
+
+  if (hasAny(modifierGroup, ['name', 'Name']) && !cleanValue(modifierGroup.name !== undefined ? modifierGroup.name : modifierGroup.Name)) {
+    throw validationError('Modifier group name is required.');
+  }
+}
+
 function validateMenuForCreate(menu) {
   if (!menu || typeof menu !== 'object') {
     throw validationError('menu object is required.');
@@ -303,6 +377,38 @@ function normalizeProductPagination(params) {
     pageSize: pageSize,
     query: query,
     active: active
+  };
+}
+
+function normalizeCategoryPagination(params) {
+  var page = normalizePositiveInteger(params.page, 1);
+  var pageSize = normalizePositiveInteger(params.pageSize, CATEGORY_CONFIG.DEFAULT_PAGE_SIZE);
+  var query = cleanValue(params.query || params.search || '');
+
+  if (pageSize > CATEGORY_CONFIG.MAX_PAGE_SIZE) {
+    pageSize = CATEGORY_CONFIG.MAX_PAGE_SIZE;
+  }
+
+  return {
+    page: page,
+    pageSize: pageSize,
+    query: query
+  };
+}
+
+function normalizeModifierGroupPagination(params) {
+  var page = normalizePositiveInteger(params.page, 1);
+  var pageSize = normalizePositiveInteger(params.pageSize, MODIFIER_GROUP_CONFIG.DEFAULT_PAGE_SIZE);
+  var query = cleanValue(params.query || params.search || '');
+
+  if (pageSize > MODIFIER_GROUP_CONFIG.MAX_PAGE_SIZE) {
+    pageSize = MODIFIER_GROUP_CONFIG.MAX_PAGE_SIZE;
+  }
+
+  return {
+    page: page,
+    pageSize: pageSize,
+    query: query
   };
 }
 

@@ -47,6 +47,19 @@ function normalizeApiService(service) {
     return 'products';
   }
 
+  if (normalizedService === 'category') {
+    return 'Categories';
+  }
+
+  if (
+    normalizedService === 'modifierGroup' ||
+    normalizedService === 'modifiergroups' ||
+    normalizedService === 'modifier-group' ||
+    normalizedService === 'modifier-groups'
+  ) {
+    return 'ModifierGroups';
+  }
+
   if (normalizedService === 'menu') {
     return 'menus';
   }
@@ -67,7 +80,56 @@ function getMenuItemPayload(body) {
   return body.menuItem || body.menuItems || body['menu-item'] || body['menu-items'];
 }
 
+function getCategoryPayload(body) {
+  return body.category || body.categories;
+}
+
+function getModifierGroupPayload(body) {
+  return body.modifierGroup ||
+    body.modifierGroups ||
+    body['modifier-group'] ||
+    body['modifier-groups'];
+}
+
 function handleGetServiceAction(service, action, params) {
+  if (service === 'modifierGroups') {
+    switch (action) {
+      case 'getAll':
+      case 'search':
+        return apiGetAllModifierGroups(params);
+
+      case 'getById':
+        return apiGetModifierGroupById(params.id);
+
+      default:
+        return jsonResponse({
+          success: false,
+          code: 400,
+          message: 'Invalid modifierGroups GET action.',
+          data: null
+        });
+    }
+  }
+
+  if (service === 'categories') {
+    switch (action) {
+      case 'getAll':
+      case 'search':
+        return apiGetAllCategories(params);
+
+      case 'getById':
+        return apiGetCategoryById(params.id);
+
+      default:
+        return jsonResponse({
+          success: false,
+          code: 400,
+          message: 'Invalid categories GET action.',
+          data: null
+        });
+    }
+  }
+
   if (service === 'menuItems') {
     switch (action) {
       case 'getAll':
@@ -152,6 +214,48 @@ function handleGetServiceAction(service, action, params) {
 }
 
 function handlePostServiceAction(service, body) {
+  if (service === 'modifierGroups') {
+    switch (body.action) {
+      case 'create':
+        return apiCreateModifierGroup(getModifierGroupPayload(body));
+
+      case 'update':
+        return apiUpdateModifierGroup(body.id, getModifierGroupPayload(body));
+
+      case 'delete':
+        return apiDeleteModifierGroup(body.id);
+
+      default:
+        return jsonResponse({
+          success: false,
+          code: 400,
+          message: 'Invalid modifierGroups POST action.',
+          data: null
+        });
+    }
+  }
+
+  if (service === 'categories') {
+    switch (body.action) {
+      case 'create':
+        return apiCreateCategory(getCategoryPayload(body));
+
+      case 'update':
+        return apiUpdateCategory(body.id, getCategoryPayload(body));
+
+      case 'delete':
+        return apiDeleteCategory(body.id);
+
+      default:
+        return jsonResponse({
+          success: false,
+          code: 400,
+          message: 'Invalid categories POST action.',
+          data: null
+        });
+    }
+  }
+
   if (service === 'menuItems') {
     switch (body.action) {
       case 'create':
