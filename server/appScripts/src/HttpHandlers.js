@@ -48,7 +48,7 @@ function normalizeApiService(service) {
   }
 
   if (normalizedService === 'category') {
-    return 'Categories';
+    return 'categories';
   }
 
   if (
@@ -57,7 +57,7 @@ function normalizeApiService(service) {
     normalizedService === 'modifier-group' ||
     normalizedService === 'modifier-groups'
   ) {
-    return 'ModifierGroups';
+    return 'modifierGroups';
   }
 
   if (normalizedService === 'menu') {
