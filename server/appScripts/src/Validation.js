@@ -73,6 +73,10 @@ function validateMenuItemForCreate(menuItem) {
     throw validationError('ProductID is required.');
   }
 
+  if (!getMenuItemInputDisplayName(menuItem)) {
+    throw validationError('DisplayName is required.');
+  }
+
   validateMenuItemMutableFields(menuItem, true);
 }
 
@@ -85,7 +89,23 @@ function validateMenuItemForUpdate(menuItem) {
 }
 
 function validateMenuItemMutableFields(menuItem, isCreate) {
-  if (isCreate || hasAny(menuItem, ['basePricePence', 'BasePricePence'])) {
+  if (hasAny(menuItem, ['displayName', 'DisplayName']) && !getMenuItemInputDisplayName(menuItem)) {
+    throw validationError('DisplayName is required.');
+  }
+
+  if (
+    isCreate ||
+    hasAny(menuItem, [
+      'basePricePence',
+      'BasePricePence',
+      'basePrice',
+      'BasePrice',
+      'basePricePounds',
+      'BasePricePounds',
+      'price',
+      'Price'
+    ])
+  ) {
     normalizeMenuItemPenceInput(getMenuItemInputBasePricePence(menuItem));
   }
 
@@ -102,8 +122,64 @@ function getMenuItemInputProductId(menuItem) {
   return cleanValue(menuItem.productId || menuItem.productID || menuItem.ProductID);
 }
 
+function getMenuItemInputDisplayName(menuItem) {
+  return cleanValue(menuItem.displayName !== undefined ? menuItem.displayName : menuItem.DisplayName);
+}
+
 function getMenuItemInputBasePricePence(menuItem) {
-  return menuItem.basePricePence !== undefined ? menuItem.basePricePence : menuItem.BasePricePence;
+  if (menuItem.basePricePence !== undefined) {
+    return {
+      unit: 'pence',
+      value: menuItem.basePricePence
+    };
+  }
+
+  if (menuItem.BasePricePence !== undefined) {
+    return {
+      unit: 'pence',
+      value: menuItem.BasePricePence
+    };
+  }
+
+  if (menuItem.basePrice !== undefined) {
+    return {
+      unit: 'gbp',
+      value: menuItem.basePrice
+    };
+  }
+
+  if (menuItem.BasePrice !== undefined) {
+    return {
+      unit: 'gbp',
+      value: menuItem.BasePrice
+    };
+  }
+
+  if (menuItem.basePricePounds !== undefined) {
+    return {
+      unit: 'gbp',
+      value: menuItem.basePricePounds
+    };
+  }
+
+  if (menuItem.BasePricePounds !== undefined) {
+    return {
+      unit: 'gbp',
+      value: menuItem.BasePricePounds
+    };
+  }
+
+  if (menuItem.price !== undefined) {
+    return {
+      unit: 'gbp',
+      value: menuItem.price
+    };
+  }
+
+  return {
+    unit: 'gbp',
+    value: menuItem.Price
+  };
 }
 
 function getMenuItemInputSortOrder(menuItem) {
@@ -111,11 +187,50 @@ function getMenuItemInputSortOrder(menuItem) {
 }
 
 function normalizeMenuItemPenceInput(value) {
-  if (value === undefined || value === null || cleanValue(value) === '') {
+  var priceInput = value && typeof value === 'object' && hasOwn(value, 'unit')
+    ? value
+    : {
+      unit: 'pence',
+      value: value
+    };
+
+  if (priceInput.value === undefined || priceInput.value === null || cleanValue(priceInput.value) === '') {
     throw validationError('BasePricePence is required.');
   }
 
-  return normalizeNonNegativeIntegerInput(value, 'BasePricePence');
+  if (priceInput.unit === 'gbp') {
+    return normalizeGbpPriceToPenceInput(priceInput.value);
+  }
+
+  var penceValue = cleanValue(priceInput.value);
+
+  if (/^[£\s]*\d+(?:,\d{3})*(?:\.\d{1,2})?\s*$/.test(penceValue) || /^[£\s]*\d+\.\d{1,2}\s*$/.test(penceValue)) {
+    var withoutCurrency = penceValue.replace(/[£,\s]/g, '');
+
+    if (penceValue.indexOf('£') !== -1 || penceValue.indexOf(',') !== -1 || withoutCurrency.indexOf('.') !== -1) {
+      return normalizeGbpPriceToPenceInput(withoutCurrency);
+    }
+  }
+
+  return normalizeNonNegativeIntegerInput(priceInput.value, 'BasePricePence');
+}
+
+function normalizeGbpPriceToPenceInput(value) {
+  var normalizedValue = cleanValue(value).replace(/[£,\s]/g, '');
+
+  if (!/^\d+(\.\d{1,2})?$/.test(normalizedValue)) {
+    throw validationError('BasePricePence must be a non-negative integer pence value or a GBP price with up to two decimal places.');
+  }
+
+  var parts = normalizedValue.split('.');
+  var pounds = Number(parts[0]);
+  var pence = Number(((parts[1] || '') + '00').slice(0, 2));
+
+  if (!Number.isFinite(pounds) || !Number.isFinite(pence)) {
+    throw validationError('BasePricePence must be a non-negative integer pence value or a GBP price with up to two decimal places.');
+  }
+
+  return pounds * 100 + pence;
 }
 
 function normalizeNonNegativeIntegerInput(value, label) {

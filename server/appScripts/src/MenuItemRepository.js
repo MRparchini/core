@@ -294,6 +294,94 @@ function deleteMenuItem(id) {
   return setMenuItemActive(id, false);
 }
 
+function upsertBaseMenuItemForCloverImport(importedProduct) {
+  if (!importedProduct || typeof importedProduct !== 'object') {
+    throw validationError('Imported product object is required.');
+  }
+
+  var cloverId = cleanValue(importedProduct.cloverId || importedProduct.CloverID || importedProduct['Clover ID']);
+
+  if (!cloverId) {
+    throw validationError('CloverID is required for MenuItem import.');
+  }
+
+  var product = findProductByCloverIdForMenuItemImport(cloverId);
+  var baseMenu = getActiveBaseMenuForMenuItemImport();
+  var basePricePence = normalizeMenuItemPenceInput(getMenuItemInputBasePricePence(importedProduct));
+  var isActive = hasAny(importedProduct, ['isActive', 'IsActive', 'active', 'Active'])
+    ? cleanMenuItemIsActive(
+      importedProduct.isActive !== undefined
+        ? importedProduct.isActive
+        : importedProduct.IsActive !== undefined
+          ? importedProduct.IsActive
+          : importedProduct.active !== undefined
+            ? importedProduct.active
+            : importedProduct.Active
+    )
+    : true;
+
+  return upsertMenuItemForCloverImport({
+    menuId: baseMenu.id,
+    productId: product.id,
+    displayName: cleanValue(importedProduct.displayName || importedProduct.DisplayName || product.name),
+    descriptionOverride: cleanValue(importedProduct.descriptionOverride || importedProduct.DescriptionOverride || ''),
+    basePricePence: basePricePence,
+    sortOrder: normalizeNonNegativeIntegerInput(importedProduct.sortOrder || importedProduct.SortOrder || 0, 'SortOrder'),
+    isActive: isActive
+  });
+}
+
+function upsertMenuItemForCloverImport(menuItem) {
+  var sheet = getMenuItemsSheet();
+  var joinData = loadMenuItemJoinData();
+  var normalizedMenuItem = normalizeMenuItemInput(menuItem, null);
+
+  assertMenuItemRelationshipsExist(normalizedMenuItem, joinData);
+
+  var rowNumber = findMenuItemRowByMenuAndProduct(
+    sheet,
+    normalizedMenuItem.menuId,
+    normalizedMenuItem.productId
+  );
+
+  if (rowNumber === -1) {
+    return createMenuItem(normalizedMenuItem);
+  }
+
+  var currentRow = sheet
+    .getRange(rowNumber, 1, 1, MENU_ITEM_CONFIG.TOTAL_COLUMNS)
+    .getDisplayValues()[0];
+  var currentMenuItem = rowToMenuItem(currentRow);
+  var updatedMenuItem = normalizeMenuItemInput({
+    basePricePence: normalizedMenuItem.basePricePence,
+    isActive: normalizedMenuItem.isActive
+  }, currentMenuItem);
+
+  updatedMenuItem.updatedAt = new Date().toISOString();
+
+  var updatedRow = [
+    updatedMenuItem.id,
+    updatedMenuItem.menuId,
+    updatedMenuItem.productId,
+    updatedMenuItem.displayName,
+    updatedMenuItem.descriptionOverride,
+    updatedMenuItem.basePricePence,
+    updatedMenuItem.sortOrder,
+    updatedMenuItem.isActive,
+    updatedMenuItem.createdAt,
+    updatedMenuItem.updatedAt
+  ];
+
+  sheet
+    .getRange(rowNumber, 1, 1, MENU_ITEM_CONFIG.TOTAL_COLUMNS)
+    .setValues([updatedRow]);
+
+  SpreadsheetApp.flush();
+  clearMenuItemsCache();
+
+  return addMenuItemDerivedFields(rowToMenuItem(updatedRow), joinData);
+}
+
 function normalizeMenuItemInput(input, currentMenuItem) {
   var menuItem = currentMenuItem ? {
     id: currentMenuItem.id,
@@ -335,7 +423,18 @@ function normalizeMenuItemInput(input, currentMenuItem) {
     menuItem.descriptionOverride = cleanValue(input.descriptionOverride !== undefined ? input.descriptionOverride : input.DescriptionOverride);
   }
 
-  if (hasAny(input, ['basePricePence', 'BasePricePence'])) {
+  if (
+    hasAny(input, [
+      'basePricePence',
+      'BasePricePence',
+      'basePrice',
+      'BasePrice',
+      'basePricePounds',
+      'BasePricePounds',
+      'price',
+      'Price'
+    ])
+  ) {
     menuItem.basePricePence = normalizeMenuItemPenceInput(getMenuItemInputBasePricePence(input));
   }
 
@@ -561,6 +660,27 @@ function findMenuItemRowById(sheet, id) {
   return MENU_ITEM_CONFIG.FIRST_DATA_ROW + index;
 }
 
+function findMenuItemRowByMenuAndProduct(sheet, menuId, productId) {
+  var lastRow = sheet.getLastRow();
+
+  if (lastRow < MENU_ITEM_CONFIG.FIRST_DATA_ROW) {
+    return -1;
+  }
+
+  var rows = getMenuItemRows(sheet, lastRow);
+  var index = rows.findIndex(function(row) {
+    var menuItem = rowToMenuItem(row);
+
+    return menuItem.menuId === menuId && menuItem.productId === productId;
+  });
+
+  if (index === -1) {
+    return -1;
+  }
+
+  return MENU_ITEM_CONFIG.FIRST_DATA_ROW + index;
+}
+
 function generateMenuItemId(sheet) {
   var id = Utilities.getUuid();
 
@@ -569,6 +689,64 @@ function generateMenuItemId(sheet) {
   }
 
   return id;
+}
+
+function getActiveBaseMenuForMenuItemImport() {
+  var menuSheet = getMenusSheet();
+  var menuRows = getMenuRows(menuSheet, menuSheet.getLastRow());
+  var baseMenus = menuRows
+    .filter(function(row) {
+      return String(row[0]).trim() !== '';
+    })
+    .map(rowToMenu)
+    .filter(function(menu) {
+      return menu.isActive && normalizeMenuName(menu.name) === 'base';
+    });
+
+  if (baseMenus.length !== 1) {
+    throw validationError('MenuItem import requires exactly one active Menu named Base.');
+  }
+
+  return baseMenus[0];
+}
+
+function findProductByCloverIdForMenuItemImport(cloverId) {
+  var sheet = getProductsSheet();
+  var headerRow = sheet
+    .getRange(PRODUCT_CONFIG.HEADER_ROW, 1, 1, sheet.getLastColumn())
+    .getDisplayValues()[0];
+  var cloverColumnIndex = headerRow.findIndex(function(header) {
+    return String(header || '').trim() === 'CloverID';
+  });
+
+  if (cloverColumnIndex === -1) {
+    throw validationError('Products.CloverID header is required for MenuItem import.');
+  }
+
+  if (sheet.getLastRow() < PRODUCT_CONFIG.FIRST_DATA_ROW) {
+    throw notFoundError('Product with CloverID ' + cloverId + ' was not found.');
+  }
+
+  var numberOfRows = sheet.getLastRow() - PRODUCT_CONFIG.FIRST_DATA_ROW + 1;
+  var numberOfColumns = Math.max(PRODUCT_CONFIG.TOTAL_COLUMNS, cloverColumnIndex + 1);
+  var rows = sheet
+    .getRange(PRODUCT_CONFIG.FIRST_DATA_ROW, 1, numberOfRows, numberOfColumns)
+    .getDisplayValues();
+  var matches = rows
+    .filter(function(row) {
+      return String(row[0]).trim() !== '' && cleanValue(row[cloverColumnIndex]) === cloverId;
+    })
+    .map(rowToProduct);
+
+  if (matches.length > 1) {
+    throw duplicateError('Products.CloverID must be unique before MenuItem import.');
+  }
+
+  if (matches.length === 0) {
+    throw notFoundError('Product with CloverID ' + cloverId + ' was not found.');
+  }
+
+  return matches[0];
 }
 
 function cleanMenuItemIsActive(value) {

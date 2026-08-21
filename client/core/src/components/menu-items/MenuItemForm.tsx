@@ -47,9 +47,10 @@ export function MenuItemForm({
     isActive: initialValue?.isActive ?? true,
   }))
   const [priceError, setPriceError] = useState<string | null>(null)
+  const [productSearch, setProductSearch] = useState('')
 
   const menuOptions = buildMenuOptions(menus, initialValue)
-  const productOptions = buildProductOptions(products, initialValue)
+  const productOptions = buildProductOptions(products, initialValue, productSearch, formData.productId)
 
   function updateField<Field extends keyof MenuItemFormData>(field: Field, value: MenuItemFormData[Field]) {
     setFormData((currentFormData) => ({
@@ -102,6 +103,12 @@ export function MenuItemForm({
         </label>
         <label className="grid gap-2 text-sm font-medium">
           Product
+          <Input
+            value={productSearch}
+            onChange={(event) => setProductSearch(event.target.value)}
+            placeholder="Search products by name or kitchen name"
+            disabled={isLoadingReferences}
+          />
           <select
             required
             className="border-input bg-background h-9 rounded-md border px-2 text-sm"
@@ -120,9 +127,10 @@ export function MenuItemForm({
         <label className="grid gap-2 text-sm font-medium">
           Display name
           <Input
+            required
             value={formData.displayName}
             onChange={(event) => updateField('displayName', event.target.value)}
-            placeholder="Optional menu-specific name"
+            placeholder="Customer-facing menu name"
           />
         </label>
         <label className="grid gap-2 text-sm font-medium">
@@ -209,8 +217,30 @@ function buildMenuOptions(menus: Menu[], initialValue?: MenuItem) {
   return options
 }
 
-function buildProductOptions(products: Product[], initialValue?: MenuItem) {
-  const options = products.filter((product) => product.isActive || product.id === initialValue?.productId)
+function buildProductOptions(
+  products: Product[],
+  initialValue: MenuItem | undefined,
+  query: string,
+  selectedProductId: string,
+) {
+  const normalizedQuery = normalizeProductOptionSearch(query)
+  const options = products.filter((product) => {
+    if (!product.isActive && product.id !== initialValue?.productId && product.id !== selectedProductId) {
+      return false
+    }
+
+    if (!normalizedQuery || product.id === selectedProductId) {
+      return true
+    }
+
+    const normalizedSearchableText = normalizeProductOptionSearch([
+      product.name,
+      product.kitchenName,
+      product.category,
+    ].join(' '))
+
+    return normalizedSearchableText.includes(normalizedQuery)
+  })
 
   if (initialValue?.productId && !options.some((product) => product.id === initialValue.productId)) {
     options.push({
@@ -225,5 +255,22 @@ function buildProductOptions(products: Product[], initialValue?: MenuItem) {
     })
   }
 
+  if (selectedProductId && !options.some((product) => product.id === selectedProductId)) {
+    const selectedProduct = products.find((product) => product.id === selectedProductId)
+
+    if (selectedProduct) {
+      options.push(selectedProduct)
+    }
+  }
+
   return options
+}
+
+function normalizeProductOptionSearch(value: string) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
